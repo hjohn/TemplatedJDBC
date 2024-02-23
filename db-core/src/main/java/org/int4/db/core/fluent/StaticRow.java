@@ -6,9 +6,22 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.Objects;
 
+/**
+ * An implementation of {@link Row} that gets its data from
+ * an array.
+ */
 public class StaticRow implements Row {
   private final Object[] data;
 
+  /**
+   * Constructs a new instance.
+   *
+   * <p>Note: the given array is not copied and should not
+   * be mutated after calling this constructor.
+   *
+   * @param data an array, cannot be {@code null}
+   * @throws NullPointerException when any argument is {@code null}
+   */
   public StaticRow(Object[] data) {
     this.data = Objects.requireNonNull(data, "data");
   }

@@ -80,6 +80,7 @@ public interface TerminalMappingSteps<T, X extends Exception> {
    *
    * @param consumer a consumer for processing each result, cannot be {@code null}
    * @throws X when an exception occurs
+   * @throws NullPointerException when any argument is {@code null}
    */
   default void consume(Consumer<T> consumer) throws X {
     consume(consumer, Long.MAX_VALUE);
@@ -94,6 +95,7 @@ public interface TerminalMappingSteps<T, X extends Exception> {
    * @param max a maximum number of results to consume, must be positive
    * @return {@code true} if there were more results left to consume, otherwise {@code false}
    * @throws X when an exception occurs
+   * @throws NullPointerException when any argument is {@code null}
    */
   boolean consume(Consumer<T> consumer, long max) throws X;
 }

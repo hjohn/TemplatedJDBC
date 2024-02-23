@@ -31,14 +31,16 @@ public class StatementExecutor<X extends Exception> implements RowSteps<X>, Term
    * statements. Behavior is undefined if the statement is not an {@code INSERT} statement
    * or the statement returned no generated keys.
    *
-   * @return a {@link RowsNode}, never {@code null}
+   * @return a new intermediate step, never {@code null}
    */
-  public RowsNode<X> mapGeneratedKeys() {
+  public RowSteps<X> mapGeneratedKeys() {
     return new RowsNode<>(context, PreparedStatement::getGeneratedKeys);
   }
 
   @Override
   public <R> ExecutionStep<R, X> map(JdbcFunction<Row, R> mapper) {
+    Objects.requireNonNull(mapper, "mapper");
+
     return new ExecutionStep<>(context, PreparedStatement::getResultSet, mapper);
   }
 

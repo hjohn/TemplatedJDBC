@@ -5,7 +5,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 
-public class DynamicRow implements Row {
+class DynamicRow implements Row {
   private final ResultSet rs;
 
   /*

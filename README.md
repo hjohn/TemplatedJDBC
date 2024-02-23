@@ -122,7 +122,7 @@ Simple SQL statements which require no template parameters can be executed direc
 ```java
 List<Row> employees = tx."SELECT * FROM employee".toList();
 List<Double> salaries = tx."SELECT salary FROM employee".asDouble().toList();
-int count = tx."SELECT COUNT(*) FROM employee".map(r -> r.getInteger()).get();
+int count = tx."SELECT COUNT(*) FROM employee".map(r -> r.getInteger(0)).get();
 long affectedRows = tx."UPDATE employee SET salary = salary * 2".execute();
 ```
 
@@ -153,7 +153,7 @@ int count = tx."SELECT COUNT(*) FROM employee WHERE name = \{name}".asInt().get(
 
 # Leveraging `record`s
 
-Handling data using untyped `array`s is cumbersome and error prone. Instead, `record`s can be used to handle groups of fields as a single unit.
+Handling data using untyped `Row`s is cumbersome and error prone. Instead, `record`s can be used to handle groups of fields as a single unit.
 
 In its most simple form, a `record` can be used as a list of values. Given:
 
@@ -178,9 +178,9 @@ The above statement will take the required values directly form the record. Note
 |`Extractor`|Provides fields or fields + values to `INSERT`, `UPDATE` or `SELECT` statements|
 |`Reflector`|The combination of a `Mapper` and `Extractor`|
 
-A `Reflector` can be obtained by providing it with a suitable record definition. The record must use primitive types supported by the underlying database, but can include nested record types consisting on only supported types.
+A `Reflector` can be obtained by providing it with a suitable record definition. The record must use primitive types supported by the underlying database, but can include nested record types consisting off only supported types.
 
-> `Reflector`s can also be created for arbitrary types, although this involves providing both the means to create such a type, and a way to extract values from it. At the moment there is only limited support for such types, and some manual work is needed. In the future it's possible that Reflection + Annotations may make this task a bit easier. For now it is assumed we're dealing with record types.
+`Reflector`s can also be created for arbitrary types, although this involves providing both the means to create such a type, and a way to extract values from it. At the moment there is only limited support for such types, and some manual work is needed. In the future it's possible that Reflection + Annotations may make this task a bit easier. For now it is assumed we're dealing with record types.
 
 By default, the component names of a `record` are translated by converting a camel case name to an underscored name. For example, `creationDate` would become `creation_date`. The names can be overridden by calling additional methods on the `Reflector`.
 
