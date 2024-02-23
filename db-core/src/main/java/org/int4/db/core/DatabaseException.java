@@ -1,12 +1,15 @@
 package org.int4.db.core;
 
+/**
+ * Thrown when an error occurred while accessing the database.
+ */
 public class DatabaseException extends RuntimeException {
 
-  public DatabaseException(String message, Throwable cause) {
+  DatabaseException(String message, Throwable cause) {
     super(message, cause);
   }
 
-  public DatabaseException(String message) {
+  DatabaseException(String message) {
     super(message);
   }
 }

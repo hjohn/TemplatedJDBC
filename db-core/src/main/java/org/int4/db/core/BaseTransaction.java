@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.sql.Savepoint;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -28,7 +29,7 @@ abstract class BaseTransaction<X extends Exception> implements AutoCloseable {
   private final Savepoint savepoint;
   private final long id;
   private final boolean readOnly;
-  private final List<Consumer<TransactionState>> completionHooks = new ArrayList<>();
+  private final List<Consumer<TransactionResult>> completionHooks = new ArrayList<>();
 
   private int activeNestedTransactions;
   private boolean finished;
@@ -70,11 +71,11 @@ abstract class BaseTransaction<X extends Exception> implements AutoCloseable {
     CURRENT_TRANSACTION.set(this);
   }
 
-  private synchronized void incrementNestedTransactions() {
+  private void incrementNestedTransactions() {
     activeNestedTransactions++;
   }
 
-  private synchronized void decrementNestedTransactions() {
+  private void decrementNestedTransactions() {
     activeNestedTransactions--;
   }
 
@@ -88,19 +89,21 @@ abstract class BaseTransaction<X extends Exception> implements AutoCloseable {
   }
 
 
-  // TODO check synchronized
   // TODO what about batch inserts?
   // TODO multiple results support
 
 
   /**
    * Adds a completion hook which is called when the outer most transaction
-   * completes. The passed {@link TransactionState} is never {@code null} and
+   * completes. The passed {@link TransactionResult} is never {@code null} and
    * indicates whether the outer most transaction was committed or rolled back.
    *
    * @param consumer a consumer that is called after the outer most transaction completes, cannot be {@code null}
+   * @throws NullPointerException when any argument is {@code null}
    */
-  public synchronized void addCompletionHook(Consumer<TransactionState> consumer) {
+  public void addCompletionHook(Consumer<TransactionResult> consumer) {
+    Objects.requireNonNull(consumer, "consumer");
+
     if(parent == null) {
       completionHooks.add(consumer);
     }
@@ -146,9 +149,9 @@ abstract class BaseTransaction<X extends Exception> implements AutoCloseable {
           throw exceptionTranslator.translate(this, "Exception while committing/rolling back connection", e);
         }
         finally {
-          for(Consumer<TransactionState> consumer : completionHooks) {
+          for(Consumer<TransactionResult> consumer : completionHooks) {
             try {
-              consumer.accept(committed ? TransactionState.COMMITTED : TransactionState.ROLLED_BACK);
+              consumer.accept(committed ? TransactionResult.COMMITTED : TransactionResult.ROLLED_BACK);
             }
             catch(Exception e) {
               LOGGER.log(Level.WARNING, "Commit hook for " + this + " threw exception: " + consumer, e);
@@ -187,11 +190,23 @@ abstract class BaseTransaction<X extends Exception> implements AutoCloseable {
     }
   }
 
-  public synchronized void commit() throws X {
+  /**
+   * Commits this transaction immediately. Any further attempts to use this transaction
+   * will result in an exception.
+   *
+   * @throws X when an error occurred during the commit
+   */
+  public void commit() throws X {
     finishTransaction(true);
   }
 
-  public synchronized void rollback() throws X {
+  /**
+   * Rolls this transaction back immediately. Any further attempts to use this transaction
+   * will result in an exception.
+   *
+   * @throws X when an error occurred during the roll back
+   */
+  public void rollback() throws X {
     finishTransaction(false);
   }
 

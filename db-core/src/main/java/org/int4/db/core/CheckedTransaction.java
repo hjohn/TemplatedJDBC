@@ -9,6 +9,9 @@ import java.util.function.Supplier;
 import org.int4.db.core.fluent.Context;
 import org.int4.db.core.fluent.StatementExecutor;
 
+/**
+ * Represents a database transaction.
+ */
 public class CheckedTransaction extends BaseTransaction<SQLException> implements Processor<StatementExecutor<SQLException>, SQLException> {
 
   CheckedTransaction(Supplier<Connection> connectionProvider, boolean readOnly) throws SQLException {
@@ -16,7 +19,7 @@ public class CheckedTransaction extends BaseTransaction<SQLException> implements
   }
 
   @Override
-  public StatementExecutor<SQLException> process(StringTemplate stringTemplate) throws SQLException {
+  public StatementExecutor<SQLException> process(StringTemplate stringTemplate) {
     SafeSQL sql = new SafeSQL(stringTemplate);
 
     return new StatementExecutor<>(new Context<>() {

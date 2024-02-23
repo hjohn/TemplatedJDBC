@@ -9,6 +9,9 @@ import java.util.function.Supplier;
 import org.int4.db.core.fluent.Context;
 import org.int4.db.core.fluent.StatementExecutor;
 
+/**
+ * Represents a database transaction.
+ */
 public class Transaction extends BaseTransaction<DatabaseException> implements Processor<StatementExecutor<DatabaseException>, DatabaseException> {
 
   Transaction(Supplier<Connection> connectionProvider, boolean readOnly) {

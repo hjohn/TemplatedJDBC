@@ -123,8 +123,8 @@ public class DatabaseTest {
 
   @Test
   public void shouldCallCompletionHookOnceOuterTransactionCompletes() {
-    AtomicReference<TransactionState> reference = new AtomicReference<>();
-    AtomicReference<TransactionState> nestedReference = new AtomicReference<>();
+    AtomicReference<TransactionResult> reference = new AtomicReference<>();
+    AtomicReference<TransactionResult> nestedReference = new AtomicReference<>();
 
     try(Transaction transaction = database.beginTransaction()) {
       transaction.addCompletionHook(reference::set);
@@ -138,8 +138,8 @@ public class DatabaseTest {
       assertThat(nestedReference.get()).isNull();
     }
 
-    assertThat(reference.get()).isEqualTo(TransactionState.ROLLED_BACK);
-    assertThat(nestedReference.get()).isEqualTo(TransactionState.ROLLED_BACK);
+    assertThat(reference.get()).isEqualTo(TransactionResult.ROLLED_BACK);
+    assertThat(nestedReference.get()).isEqualTo(TransactionResult.ROLLED_BACK);
   }
 
   @Test
