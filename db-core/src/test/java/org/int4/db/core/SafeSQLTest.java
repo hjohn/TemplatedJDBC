@@ -1,0 +1,91 @@
+package org.int4.db.core;
+
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodHandles.Lookup;
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.time.LocalDate;
+
+import org.int4.db.core.fluent.Extractor;
+import org.int4.db.core.fluent.Identifier;
+import org.int4.db.core.fluent.Reflector;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import static java.lang.StringTemplate.RAW;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+public class SafeSQLTest {
+  private static final Lookup LOOKUP = MethodHandles.lookup();
+
+  @Captor
+  private ArgumentCaptor<String> sqlCaptor;
+
+  @SuppressWarnings("resource")
+  @Test
+  void shouldCreatePreparedStatement(@Mock Connection connection, @Mock PreparedStatement preparedStatement) throws SQLException {
+    Reflector<Employee> all = Reflector.of(LOOKUP, Employee.class);
+    Extractor<Employee> nameOnly = all.only("name");
+    Employee employee = new Employee("John", LocalDate.of(1234, 5, 6), 42.42, true, Gender.M);
+    boolean overtime = false;
+
+    StringTemplate template = RAW."""
+      INSERT INTO employees (\{nameOnly}) VALUES (\{nameOnly.values(employee)});
+      INSERT INTO employees (\{all}) VALUES (\{employee});
+      SELECT * FROM \{Identifier.of("employees")} WHERE overtime = \{overtime} AND \{nameOnly.entries(employee)}
+    """;
+
+    SafeSQL sql = new SafeSQL(template);
+
+    when(connection.prepareStatement(sqlCaptor.capture(), eq(Statement.RETURN_GENERATED_KEYS))).thenReturn(preparedStatement);
+
+    PreparedStatement statement = sql.toPreparedStatement(connection);
+
+    assertThat(sqlCaptor.getValue()).isEqualTo("""
+      INSERT INTO employees (name) VALUES (?);
+      INSERT INTO employees (name, birth_date, salary, overtime, gender) VALUES (?,?,?,?,?);
+      SELECT * FROM employees WHERE overtime = ? AND name = ?
+    """);
+
+    verify(statement).setObject(1, "John");
+    verify(statement).setObject(2, "John");
+    verify(statement).setObject(3, Date.valueOf(LocalDate.of(1234, 5, 6)));
+    verify(statement).setObject(4, 42.42);
+    verify(statement).setObject(5, true);
+    verify(statement).setString(6, "M");
+    verify(statement).setObject(7, false);
+    verify(statement).setObject(8, "John");
+
+    assertThat(sql.toString()).isEqualTo(template.toString());
+  }
+
+  @SuppressWarnings("resource")
+  @Test
+  void shouldCreatePreparedStatementWithAlias(@Mock Connection connection, @Mock PreparedStatement preparedStatement) throws SQLException {
+    Reflector<Employee> all = Reflector.of(LOOKUP, Employee.class);
+    SafeSQL sql = new SafeSQL(RAW."SELECT e.\{all} FROM employee e");
+
+    when(connection.prepareStatement(sqlCaptor.capture(), eq(Statement.RETURN_GENERATED_KEYS))).thenReturn(preparedStatement);
+
+    PreparedStatement statement = sql.toPreparedStatement(connection);
+
+    assertThat(sqlCaptor.getValue()).isEqualTo("SELECT e.name, e.birth_date, e.salary, e.overtime, e.gender FROM employee e");
+
+    verifyNoMoreInteractions(statement);
+  }
+
+  enum Gender {M, F}
+  record Employee(String name, LocalDate birthDate, double salary, boolean overtime, Gender gender) {}
+}

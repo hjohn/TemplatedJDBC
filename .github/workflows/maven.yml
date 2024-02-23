@@ -1,0 +1,29 @@
+name: build
+
+on:
+  push:
+    branches:
+      - 'master'
+      - 'feature/**'
+  pull_request:
+    branches:
+      - 'master'
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up JDK
+      uses: actions/setup-java@v1
+      with:
+        java-version: 21
+    - name: Build with Maven
+      run: mvn -B package jacoco:report --file pom.xml
+    - name: Coverage
+      uses: codecov/codecov-action@v1
+      with:
+        file: ./**/target/site/jacoco/jacoco.xml
+        name: codecov
