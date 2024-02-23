@@ -135,10 +135,11 @@ The template allows several customizations before the statement is executed. Dep
 |`asInt`, `asLong`, ...|Intermediate|Assumes a single column, and maps the first column to the indicated type|
 |`execute`|Terminal Statement|Executes the statement and returns the number of affected rows|
 |`get`|Terminal Query|Executes the statement and returns the first and only result, or `null` if unavailable|
-|`toOptional`|Terminal Query|Executes the statement and returns the first and only result as an `Optional<T>`|
+|`getFirst`|Terminal Query|Executes the statement and returns the first result, or `null` if unavailable|
+|`getOptional`|Terminal Query|Executes the statement and returns the first and only result as an `Optional<T>`|
 |`toList`|Terminal Query|Executes the statement and returns the results as a (possibly empty) `List`|
 |`consume(Consumer)`|Terminal Query|Executes the statement, and calls the given consumer for each type `T`|
-|`consume(Consumer, long)`|Terminal Query|Executes the statement, and calls the given consumer for each type `T` up to a given maximum|
+|`consume(Consumer, long)`|Terminal Query|Executes the statement, and calls the given consumer for each type `T` up to a given maximum, returns `false` if all rows were processed|
 
 > Note: `Row`s are thin wrapper around a JDBC `ResultSet` but use zero based column indices to fit in better.
 
