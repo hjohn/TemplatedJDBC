@@ -112,6 +112,24 @@ For more examples see `DatabaseIT.java`.
 
 # The Basics
 
+## Creating a `Database` instance
+
+The `Database` class is the starting point for all your SQL needs. To create one, all you need is a source of `Connection`s that it can use when needed. It is highly recommended to use a connection pool for this, and the below examples shows how to do this with HikariCP:
+
+```java
+HikariConfig config = new HikariConfig();
+
+config.setJdbcUrl(url);
+config.setUsername(user);
+config.setPassword(password);
+
+DataSource dataSource = new HikariDataSource(config);
+
+Database db = new Database(dataSource::getConnection);
+```
+
+In further examples below, we'll assume that `db` holds an instance of `Database`.
+
 ## Transactions
 
 Transaction are `AutoCloseable` making it possible to use them with a try with resources construct. Transactions are associated with a thread, and starting a nested transaction will create a save point in the top level transaction to which a nested transaction may be rolled back.
