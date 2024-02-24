@@ -16,7 +16,21 @@ It leans heavily on immutable `record`s, and is assuming there will be a future 
 
 It is extensible enough to allow using types that are not `record`s, although currently there is limited support to make this usage easy and convenient. A custom solution that generates the necessary meta data using reflection and annotations may be included at a later time; until that time it is possible to provide your own (or make a pull request).
 
-## Activating Preview Features with Maven
+## Maven
+
+Add this dependency to your `pom.xml`.
+
+```xml
+<dependency>
+    <groupId>org.int4.db</groupId>
+    <artifactId>db-core</artifactId>
+    <version>0.0.1</version>
+</dependency>
+```
+
+You will also need a JDBC driver for your database, and something that can provide `Connection`s on demand (you can roll your own `Supplier<Connection>` or, highly recommended, use a connection pool like [HikariCP](https://github.com/brettwooldridge/HikariCP).
+
+### Activating Preview Features
 
 For the compiler plugin, add:
 
