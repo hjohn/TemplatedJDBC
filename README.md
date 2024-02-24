@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/License-BSD_2--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
 [![javadoc](https://javadoc.io/badge2/org.int4.db/parent/javadoc.svg)](https://javadoc.io/doc/org.int4.db/parent)
 
-# Name
+# TemplatedJDBC
 
 A zero dependency light-weight wrapper for JDBC, using String Templates and records.
 
@@ -87,7 +87,7 @@ class Example {
         try (Transaction tx = db.beginReadOnlyTransaction()) {
             return tx."SELECT e.\{ALL} FROM employee e"
                 .map(ALL)  // Convert to Employee records
-                .asList();  // Execute and return a List
+                .toList();  // Execute and return a List
         }
     }
 
