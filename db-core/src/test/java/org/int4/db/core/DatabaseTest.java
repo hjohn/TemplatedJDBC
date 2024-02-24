@@ -22,6 +22,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import nl.altindag.log.LogCaptor;
+
 @SuppressWarnings("resource")
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -144,13 +146,21 @@ public class DatabaseTest {
 
   @Test
   public void shouldIgnoreExceptionsThrownFromCompletionHook() throws SQLException {
+    LogCaptor captor = LogCaptor.forClass(BaseTransaction.class);
+
     try(Transaction transaction = database.beginTransaction()) {
+      captor.disableConsoleOutput();
       transaction.addCompletionHook(state -> {
         throw new IllegalStateException();
       });
 
       transaction.commit();
     }
+    finally {
+      captor.enableConsoleOutput();
+    }
+
+    assertThat(captor.getWarnLogs()).size().isEqualTo(1);
 
     verify(connection).commit();
   }
