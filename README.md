@@ -200,7 +200,7 @@ tx."INSERT INTO employee (id, name, salary) VALUES (\{employee})".execute();
 ```
 > SQL: `INSERT INTO employee (id, name, salary) VALUES (?, ?, ?)`
 
-The above statement will take the required values directly form the record. Note that this is still error prone as the order of the fields must match those of the record.
+The above statement will take the required values directly form the record. Note that this is still error prone as the order, and number of the fields must match those of the record.
 
 ## Introducing `Reflector`s, `Mapper`s and `Extractor`s
 
@@ -210,7 +210,7 @@ The above statement will take the required values directly form the record. Note
 |`Extractor`|Provides fields or fields + values to `INSERT`, `UPDATE` or `SELECT` statements|
 |`Reflector`|The combination of a `Mapper` and `Extractor`|
 
-A `Reflector` can be obtained by providing it with a suitable record definition. The record must use primitive types supported by the underlying database, but can include nested record types consisting off only supported types.
+A `Reflector` can be obtained by providing it with a suitable record definition. The record must use primitive types supported by the underlying database, but can include nested record types consisting of only supported types.
 
 `Reflector`s can also be created for arbitrary types, although this involves providing both the means to create such a type, and a way to extract values from it. At the moment there is only limited support for such types, and some manual work is needed. In the future it's possible that Reflection + Annotations may make this task a bit easier. For now it is assumed we're dealing with record types.
 
