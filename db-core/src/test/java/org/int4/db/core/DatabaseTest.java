@@ -110,7 +110,7 @@ public class DatabaseTest {
   public void shouldNotAllowUncommitedNestedTransactions() {
     try(Transaction transaction = database.beginTransaction()) {
       try(Transaction nestedTransaction = database.beginTransaction()) {
-        assertThrows(DatabaseException.class, () -> transaction.commit());
+        assertThrows(IllegalStateException.class, () -> transaction.commit());
       }
     }
   }

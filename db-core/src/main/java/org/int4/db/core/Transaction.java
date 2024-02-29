@@ -24,7 +24,7 @@ public class Transaction extends BaseTransaction<DatabaseException> implements P
 
     return new StatementExecutor<>(new Context<>() {
       @Override
-      public DatabaseException wrapException(String message, Throwable cause) {
+      public DatabaseException wrapException(String message, SQLException cause) {
         return new DatabaseException(Transaction.this + ": " + message, cause);
       }
 

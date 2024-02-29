@@ -24,8 +24,8 @@ public class CheckedTransaction extends BaseTransaction<SQLException> implements
 
     return new StatementExecutor<>(new Context<>() {
       @Override
-      public SQLException wrapException(String message, Throwable cause) {
-        return new SQLException(CheckedTransaction.this + ": " + message, cause);
+      public SQLException wrapException(String message, SQLException cause) {
+        return new SQLExceptionWrapper(CheckedTransaction.this + ": " + message, cause);
       }
 
       @Override
@@ -36,9 +36,19 @@ public class CheckedTransaction extends BaseTransaction<SQLException> implements
           return sql.toPreparedStatement(connection);
         }
         catch(SQLException e) {
-          throw new SQLException(CheckedTransaction.this + ": creating statement failed for: " + sql, e);
+          throw new SQLExceptionWrapper(CheckedTransaction.this + ": creating statement failed for: " + sql, e);
         }
       }
     });
+  }
+
+  class SQLExceptionWrapper extends SQLException {
+    SQLExceptionWrapper(String message, SQLException cause) {
+      super(message, cause);
+    }
+
+    SQLException getSQLException() {
+      return (SQLException)getCause();
+    }
   }
 }

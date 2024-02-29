@@ -19,7 +19,7 @@ abstract class BaseTransaction<X extends Exception> implements AutoCloseable {
   private static long uniqueIdentifier;
 
   interface ExceptionTranslator<X extends Exception> {
-    X translate(BaseTransaction<X> tx, String message, Exception e);
+    X translate(BaseTransaction<X> tx, String message, SQLException e);
   }
 
   final Connection connection;
@@ -84,7 +84,7 @@ abstract class BaseTransaction<X extends Exception> implements AutoCloseable {
       throw new IllegalStateException(this + ": Transaction already ended");
     }
     if(activeNestedTransactions != 0) {
-      throw exceptionTranslator.translate(this, "Using parent transaction while nested transactions are running is not supported", null);
+      throw new IllegalStateException(this + ": Using parent transaction while nested transactions are running is not supported");
     }
   }
 
