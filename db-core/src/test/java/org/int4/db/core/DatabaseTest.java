@@ -47,7 +47,7 @@ public class DatabaseTest {
       }
     };
 
-    database = new Database(connectionProvider);
+    database = DatabaseBuilder.using(connectionProvider).build();
   }
 
   @Test

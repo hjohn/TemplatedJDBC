@@ -50,14 +50,14 @@ public class DatabaseIT {
       }
     }
 
-    database = new Database(() -> {
+    database = DatabaseBuilder.using(() -> {
       try {
         return postgres.getDatabase("postgres", "test").getConnection();
       }
       catch(SQLException e) {
         throw new IllegalStateException(e);
       }
-    });
+    }).build();
   }
 
   @AfterAll

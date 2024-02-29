@@ -17,7 +17,7 @@ public final class Database {
    * @param connectionProvider a supplier which provides {@link Connection}s, cannot be {@code null}
    * @throws NullPointerException when any arguments is {@code null}
    */
-  public Database(Supplier<Connection> connectionProvider) {
+  Database(Supplier<Connection> connectionProvider) {
     this.connectionProvider = Objects.requireNonNull(connectionProvider, "connectionProvider");
   }
 

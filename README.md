@@ -64,7 +64,7 @@ class Example {
         // Database is reusable, and can be shared for a whole application
         // so this can also be provided as a constructor parameter instead
         // of creating it here:
-        this.database = new Database(dataSource::getConnection);
+        this.database = DatabaseBuilder.using(dataSource::getConnection).build();
     }
 
     // Generates: "INSERT INTO employee (id, name, salary) VALUES (?, ?, ?)"
@@ -125,7 +125,7 @@ config.setPassword(password);
 
 DataSource dataSource = new HikariDataSource(config);
 
-Database db = new Database(dataSource::getConnection);
+Database db = DatabaseBuilder.using(dataSource::getConnection).build();
 ```
 
 In further examples below, we'll assume that `db` holds an instance of `Database`.
