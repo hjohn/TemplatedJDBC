@@ -1,6 +1,5 @@
 package org.int4.db.core;
 
-import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
@@ -13,7 +12,7 @@ import org.junit.jupiter.api.Test;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@AnalyzeClasses(packages = ArchitectureTest.BASE_PACKAGE_NAME, importOptions = ImportOption.DoNotIncludeTests.class)
+@AnalyzeClasses(packages = ArchitectureTest.BASE_PACKAGE_NAME)
 public class ArchitectureTest {
   static final String BASE_PACKAGE_NAME = "org.int4.db.core";
 
