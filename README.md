@@ -78,10 +78,10 @@ class Example {
     void insertExample() {
         Employee employee = new Employee(1, "Jane", 1000.0);
 
-        db.apply(tx ->
+        db.accept(tx ->
             // Execute an insert:
             tx."INSERT INTO employee (\{ALL}) VALUES (\{employee})"
-                .execute()  // Execute and return row count
+                .execute()
         );
     }
 
@@ -100,7 +100,7 @@ class Example {
             tx."""
                 UPDATE employee SET \{ALL.entries(employee)}
                     WHERE id = \{employee.id()}
-            """.execute();
+            """.executeUpdate();  // Execute and return row count
         );
     }
 }
