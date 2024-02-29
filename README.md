@@ -35,7 +35,7 @@ Add this dependency to your `pom.xml`.
 </dependency>
 ```
 
-You will also need a JDBC driver for your database, and something that can provide `Connection`s on demand (you can roll your own `Supplier<Connection>` or, highly recommended, use a connection pool like [HikariCP](https://github.com/brettwooldridge/HikariCP).
+You will also need a JDBC driver for your database, and something that can provide `Connection`s on demand (you can roll your own `Supplier<Connection>` or, highly recommended, use a connection pool like [HikariCP](https://github.com/brettwooldridge/HikariCP)).
 
 ### Activating Preview Features
 
