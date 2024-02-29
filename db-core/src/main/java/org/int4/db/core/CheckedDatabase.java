@@ -12,9 +12,11 @@ import org.int4.db.core.CheckedTransaction.SQLExceptionWrapper;
  */
 public final class CheckedDatabase implements DatabaseFunctions<CheckedTransaction, SQLException> {
   private final Supplier<Connection> connectionProvider;
+  private final RetryStrategy retryStrategy;
 
-  CheckedDatabase(Supplier<Connection> connectionProvider) {
+  CheckedDatabase(Supplier<Connection> connectionProvider, RetryStrategy retryStrategy) {
     this.connectionProvider = Objects.requireNonNull(connectionProvider, "connectionProvider");
+    this.retryStrategy = retryStrategy == null ? RetryStrategy.NONE : retryStrategy;
   }
 
   @Override

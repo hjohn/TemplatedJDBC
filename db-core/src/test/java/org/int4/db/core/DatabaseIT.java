@@ -73,17 +73,16 @@ public class DatabaseIT {
 
     @BeforeEach
     void beforeEach() {
-      try(Transaction tx = database.beginTransaction()) {
-        tx."CREATE TABLE company (id int4, name varchar(100), founding_time timestamptz, gender_ratio float8, royal bool)".execute();
-        tx.commit();
-      }
+      database.accept(tx ->
+        tx."CREATE TABLE company (id int4, name varchar(100), founding_time timestamptz, gender_ratio float8, royal bool)".execute()
+      );
     }
 
     @Test
     void selectShouldReturnNoRecords() {
-      try(Transaction tx = database.beginTransaction()) {
-        assertThat(tx."SELECT COUNT(*) FROM company".asInt().get()).isEqualTo(0);
-      }
+      database.query(tx ->
+        assertThat(tx."SELECT COUNT(*) FROM company".asInt().get()).isEqualTo(0)
+      );
     }
 
     @Nested
@@ -93,33 +92,31 @@ public class DatabaseIT {
 
       @BeforeEach
       void beforeEach() {
-        try(Transaction tx = database.beginTransaction()) {
+        database.accept(tx -> {
           assertThat(tx."INSERT INTO company (\{ALL}) VALUES (\{company1})".executeUpdate()).isEqualTo(1);
           assertThat(tx."INSERT INTO company (\{ALL}) VALUES (\{company2})".executeUpdate()).isEqualTo(1);
-
-          tx.commit();
-        }
+        });
       }
 
       @Test
       void selectShouldReturnRecords() {
-        try(Transaction tx = database.beginReadOnlyTransaction()) {
-          List<Company> list = tx."SELECT \{ALL} FROM company ORDER BY name DESC".map(ALL).toList();
+        List<Company> list = database.query(tx ->
+          tx."SELECT \{ALL} FROM company ORDER BY name DESC".map(ALL).toList()
+        );
 
-          assertThat(list).containsExactly(company2, company1);
-        }
+        assertThat(list).containsExactly(company2, company1);
       }
 
       @Test
       void selectShouldReturnRawRecords() {
-        try(Transaction tx = database.beginReadOnlyTransaction()) {
-          List<Row> list = tx."SELECT \{ALL} FROM company ORDER BY name DESC".toList();
+        List<Row> list = database.query(tx ->
+          tx."SELECT \{ALL} FROM company ORDER BY name DESC".toList()
+        );
 
-          assertThat(list).containsExactly(
-            new StaticRow(new Object[] {company2.id, company2.name, Timestamp.from(company2.foundingTime), company2.genderRatio, company2.royal}),
-            new StaticRow(new Object[] {company1.id, company1.name, Timestamp.from(company1.foundingTime), company1.genderRatio, company1.royal})
-          );
-        }
+        assertThat(list).containsExactly(
+          new StaticRow(new Object[] {company2.id, company2.name, Timestamp.from(company2.foundingTime), company2.genderRatio, company2.royal}),
+          new StaticRow(new Object[] {company1.id, company1.name, Timestamp.from(company1.foundingTime), company1.genderRatio, company1.royal})
+        );
       }
     }
   }

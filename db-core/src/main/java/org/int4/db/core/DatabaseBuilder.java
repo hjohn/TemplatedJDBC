@@ -22,8 +22,23 @@ public class DatabaseBuilder {
 
   private final Supplier<Connection> connectionSupplier;
 
+  private RetryStrategy retryStrategy = RetryStrategy.NONE;
+
   private DatabaseBuilder(Supplier<Connection> connectionSupplier) {
     this.connectionSupplier = connectionSupplier;
+  }
+
+  /**
+   * Sets the retry strategy for the object produced by this builder.
+   *
+   * @param retryStrategy a retry strategy to use, cannot be {@code null}
+   * @throws NullPointerException when any argument is {@code null}
+   * @return this
+   */
+  public DatabaseBuilder withRetryStrategy(RetryStrategy retryStrategy) {
+    this.retryStrategy = Objects.requireNonNull(retryStrategy, "retryStrategy");
+
+    return this;
   }
 
   /**
@@ -35,7 +50,7 @@ public class DatabaseBuilder {
    * @return a {@link Database} instance, never {@code null}
    */
   public Database build() {
-    return new Database(connectionSupplier);
+    return new Database(connectionSupplier, retryStrategy);
   }
 
   /**

@@ -16,6 +16,13 @@ It leans heavily on immutable `record`s, and is assuming there will be a future 
 
 It is extensible enough to allow using types that are not `record`s, although currently there is limited support to make this usage easy and convenient. A custom solution that generates the necessary meta data using reflection and annotations may be included at a later time; until that time it is possible to provide your own (or make a pull request).
 
+## Features
+
+- Zero dependencies
+- Use String Templates to execute SQL safe from injection attacks
+- Use `Row`s, records or custom types to read and write data
+- Lambda based transactions that can be retried on transitive failures
+
 ## Maven
 
 Add this dependency to your `pom.xml`.
@@ -71,40 +78,30 @@ class Example {
     void insertExample() {
         Employee employee = new Employee(1, "Jane", 1000.0);
 
-        // Transaction is an AutoCloseable, so can use try with resources:
-        try (Transaction tx = db.beginTransaction()) {
+        db.apply(tx ->
             // Execute an insert:
             tx."INSERT INTO employee (\{ALL}) VALUES (\{employee})"
-                .execute();  // Execute and return row count
-
-            // Commit the transaction (default is to rollback):
-            tx.commit();
-        }
+                .execute()  // Execute and return row count
+        );
     }
 
     // Generates: "SELECT e.id, e.name, e.salary FROM employee e"
     List<Employee> queryExample() {
-        try (Transaction tx = db.beginReadOnlyTransaction()) {
-            return tx."SELECT e.\{ALL} FROM employee e"
+        return db.query(tx -> 
+            tx."SELECT e.\{ALL} FROM employee e"
                 .map(ALL)  // Convert to Employee records
                 .toList();  // Execute and return a List
-        }
+        );
     }
 
     // Generates: "UPDATE employee SET id = ?, name = ?, salary = ? WHERE id = ?"
     long updateExample() {
-        try (Transaction tx = db.beginTransaction()) {
-            Employee employee = new Employee(1, "Jane", 1000.0);
-
-            long rowCount = tx."""
+        return db.apply(tx -> 
+            tx."""
                 UPDATE employee SET \{ALL.entries(employee)}
                     WHERE id = \{employee.id()}
             """.execute();
-
-            tx.commit();
-
-            return rowCount;
-        }
+        );
     }
 }
 ```
@@ -132,7 +129,22 @@ In further examples below, we'll assume that `db` holds an instance of `Database
 
 ## Transactions
 
-Transaction are `AutoCloseable` making it possible to use them with a try with resources construct. Transactions are associated with a thread, and starting a nested transaction will create a save point in the top level transaction to which a nested transaction may be rolled back.
+Transactions can either be obtained directly by calling `Database::beginTransaction` or can be provided via a functional approach using `Database::apply` or `Database::query`. Transactions are associated with a thread, and starting a nested transaction will create a save point in the top level transaction to which a nested transaction may be rolled back.
+
+### Provided Transactions
+
+Transactions provided via a callback do not need to be closed. They will be automatically committed if the function completes normally. If the function completes exceptionally, the transaction is rolled back.
+
+```java
+db.apply(tx -> {
+    // Perform database modifications here, transaction
+    // commits if the function completes normally.
+});
+```
+
+### Manual Transactions
+
+Manually created transactions should be closed. They are `AutoCloseable` making it possible to use them with a try with resources construct.
 
 Transactions when closed will by default perform a rollback, unless `Transaction::commit` is called.
 
