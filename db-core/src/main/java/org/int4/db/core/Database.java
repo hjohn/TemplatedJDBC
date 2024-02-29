@@ -11,12 +11,6 @@ import java.util.function.Supplier;
 public final class Database implements DatabaseFunctions<Transaction, DatabaseException> {
   private final Supplier<Connection> connectionProvider;
 
-  /**
-   * Constructs a new instance.
-   *
-   * @param connectionProvider a supplier which provides {@link Connection}s, cannot be {@code null}
-   * @throws NullPointerException when any arguments is {@code null}
-   */
   Database(Supplier<Connection> connectionProvider) {
     this.connectionProvider = Objects.requireNonNull(connectionProvider, "connectionProvider");
   }

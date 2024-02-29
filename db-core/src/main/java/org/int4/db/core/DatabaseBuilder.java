@@ -5,7 +5,7 @@ import java.util.Objects;
 import java.util.function.Supplier;
 
 /**
- * Builder for {@link Database} instances.
+ * Builder for {@link Database} and {@link CheckedDatabase} instances.
  */
 public class DatabaseBuilder {
 
@@ -36,5 +36,17 @@ public class DatabaseBuilder {
    */
   public Database build() {
     return new Database(connectionSupplier);
+  }
+
+  /**
+   * Builds a {@link CheckedDatabase} instance using this builder's configuration.
+   *
+   * <p>All operations on this instance will throw the checked
+   * {@link java.sql.SQLException} when a database error occurs.
+   *
+   * @return a {@link CheckedDatabase} instance, never {@code null}
+   */
+  public CheckedDatabase throwingSQLExceptions() {
+    return new CheckedDatabase(connectionSupplier, retryStrategy);
   }
 }

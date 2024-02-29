@@ -317,7 +317,13 @@ tx."CREATE TABLE \{Identifier.of("my_table")} ( ... )".execute();
 
 # Checked Exceptions, or not...
 
-You choose. If you create the `Transaction` object using `beginCheckedTransaction`, then all operations will throw the well known `SQLException` for you to propagate. If you use `beginTransaction`, then all operations will throw an unchecked `DatabaseException`.
+You choose. You can create either a normal `Database` type that will throw an unchecked `DatabaseException` which is a wrapper around an `SQLException`, or you can create a `CheckedDatabase` that will throw `SQLException`s.
+
+```java
+Database db = DatabaseBuilder.using(dataSource::getConnection).build();
+
+CheckedDatabase checkedDB = DatabaseBuilder.using(dataSource::getConnection).throwingSQLExceptions();
+```
 
 # Future
 
