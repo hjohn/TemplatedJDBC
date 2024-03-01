@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -19,22 +20,39 @@ import java.util.regex.Pattern;
 import org.int4.db.core.util.JdbcFunction;
 import org.int4.db.core.util.ThrowingFunction;
 
+/**
+ * A combination of an {@link Extractor} and {@link Mapper} which can
+ * extract values from a given type, as well as create new instances of it.
+ *
+ * @param <T> the reflected type
+ */
 public class Reflector<T> extends Extractor<T> implements Mapper<T> {
 
   /**
    * Creates a reflector for the given record type, mapping each of its
-   * components (in order) to the given (database field) names.
+   * components (in order) to field names.
    *
+   * @param <T> the record type
    * @param baseType a record type, cannot be {@code null}
    * @return a reflector, never {@code null}
-   * @throws IllegalStateException when the number of names given does not match the number of components in the given type (and its sub types)
+   * @throws NullPointerException when any argument is {@code null}
    */
   public static <T extends Record> Reflector<T> of(Class<T> baseType) {
     return of(MethodHandles.publicLookup(), baseType);
   }
 
+  /**
+   * Creates a reflector for the given record type, mapping each of its
+   * components (in order) to field names.
+   *
+   * @param <T> the record type
+   * @param lookup a {@link Lookup} to access a non-public constructor, cannot be {@code null}
+   * @param baseType a record type, cannot be {@code null}
+   * @return a reflector, never {@code null}
+   * @throws NullPointerException when any argument is {@code null}
+   */
   public static <T extends Record> Reflector<T> of(Lookup lookup, Class<T> baseType) {
-    ConstructorsBuilder builder = new ConstructorsBuilder(lookup, baseType);
+    ConstructorsBuilder builder = new ConstructorsBuilder(Objects.requireNonNull(lookup, "lookup"), Objects.requireNonNull(baseType, "baseType"));
 
     return new Reflector<>(
       builder.names,
@@ -50,8 +68,19 @@ public class Reflector<T> extends Extractor<T> implements Mapper<T> {
     );
   }
 
+  /**
+   * Creates a reflector for a custom type.
+   *
+   * @param <T> the type of the custom type
+   * @param fieldNames a list of field names the custom type maps to, cannot be {@code null}
+   * @param creator a function to create a custom type from a given {@link Row}, cannot be {@code null}
+   * @param dataExtractor a function to extract a field by index from the custom type, cannot be {@code null}
+   * @return a reflector, never {@code null}
+   * @throws IllegalArgumentException when the field names contain invalid identifiers or duplicates
+   * @throws NullPointerException when any argument is {@code null}
+   */
   public static <T> Reflector<T> custom(List<String> fieldNames, JdbcFunction<Row, T> creator, BiFunction<T, Integer, Object> dataExtractor) {
-    return new Reflector<>(fieldNames, creator, dataExtractor);
+    return new Reflector<>(Objects.requireNonNull(fieldNames, "fieldNames"), creator, dataExtractor);
   }
 
   private final JdbcFunction<Row, T> creator;
@@ -62,6 +91,14 @@ public class Reflector<T> extends Extractor<T> implements Mapper<T> {
     this.creator = creator;
   }
 
+  /**
+   * Sets the field names to use.
+   *
+   * @param fieldNames a list of field names to map the type to, cannot be {@code null}
+   * @return a new reflector, never {@code null}
+   * @throws IllegalArgumentException when the field names contain invalid identifiers or duplicates
+   *   or the number of field names does not match the number of fields in the reflected type
+   */
   public Reflector<T> withNames(String... fieldNames) {
     if(fieldNames.length != names().size()) {
       throw new IllegalArgumentException("fieldNames must have length " + names().size());

@@ -12,6 +12,8 @@ import org.int4.db.core.fluent.FieldValueSetParameter.Values;
 /**
  * Provides template parameters providing field and field/value
  * combinations.
+ *
+ * @param <T> the type being extracted from
  */
 public class Extractor<T> {  // TODO perhaps implement marker interface TemplateParameter ?
   private final List<String> names;
