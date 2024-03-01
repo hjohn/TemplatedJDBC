@@ -79,7 +79,7 @@ abstract class BaseTransaction<X extends Exception> implements AutoCloseable {
     activeNestedTransactions--;
   }
 
-  void ensureNotFinished() throws X {
+  void ensureNotFinished() {
     if(finished) {
       throw new IllegalStateException(this + ": Transaction already ended");
     }
