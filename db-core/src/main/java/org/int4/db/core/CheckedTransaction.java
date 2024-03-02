@@ -2,7 +2,6 @@ package org.int4.db.core;
 
 import java.lang.StringTemplate.Processor;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.function.Supplier;
 
@@ -22,22 +21,17 @@ public class CheckedTransaction extends BaseTransaction<SQLException> implements
   public StatementExecutor<SQLException> process(StringTemplate stringTemplate) {
     SafeSQL sql = new SafeSQL(stringTemplate);
 
-    return new StatementExecutor<>(new Context<>() {
-      @Override
-      public SQLException wrapException(String message, SQLException cause) {
-        return new SQLExceptionWrapper(CheckedTransaction.this + ": " + message, cause);
-      }
-
-      @Override
-      public PreparedStatement createPreparedStatement() throws SQLException {
+    return new StatementExecutor<>(new Context<>(
+      () -> {
         try {
           return sql.toPreparedStatement(getConnection());
         }
         catch(SQLException e) {
           throw new SQLExceptionWrapper(CheckedTransaction.this + ": creating statement failed for: " + sql, e);
         }
-      }
-    });
+      },
+      (message, cause) -> new SQLExceptionWrapper(CheckedTransaction.this + ": " + message, cause)
+    ));
   }
 
   class SQLExceptionWrapper extends SQLException {

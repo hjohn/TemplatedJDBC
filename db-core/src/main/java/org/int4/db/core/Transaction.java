@@ -2,7 +2,6 @@ package org.int4.db.core;
 
 import java.lang.StringTemplate.Processor;
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.function.Supplier;
 
@@ -22,21 +21,16 @@ public class Transaction extends BaseTransaction<DatabaseException> implements P
   public StatementExecutor<DatabaseException> process(StringTemplate stringTemplate) {
     SafeSQL sql = new SafeSQL(stringTemplate);
 
-    return new StatementExecutor<>(new Context<>() {
-      @Override
-      public DatabaseException wrapException(String message, SQLException cause) {
-        return new DatabaseException(Transaction.this + ": " + message, cause);
-      }
-
-      @Override
-      public PreparedStatement createPreparedStatement() {
+    return new StatementExecutor<>(new Context<>(
+      () -> {
         try {
           return sql.toPreparedStatement(getConnection());
         }
         catch(SQLException e) {
           throw new DatabaseException(Transaction.this + ": creating statement failed for: " + sql, e);
         }
-      }
-    });
+      },
+      (message, cause) -> new DatabaseException(Transaction.this + ": " + message, cause)
+    ));
   }
 }

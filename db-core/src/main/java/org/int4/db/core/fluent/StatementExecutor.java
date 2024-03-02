@@ -4,9 +4,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Objects;
-import java.util.function.Consumer;
 
+import org.int4.db.core.util.JdbcConsumer;
 import org.int4.db.core.util.JdbcFunction;
+import org.int4.db.core.util.JdbcIterator;
 
 /**
  * Fluent executor for an SQL statement.
@@ -53,17 +54,7 @@ public class StatementExecutor<X extends Exception> implements RowSteps<X>, Term
    * @throws X when execution fails
    */
   public long executeUpdate() throws X {
-    try(PreparedStatement ps = context.createPreparedStatement()) {
-      try {
-        return ps.executeLargeUpdate();
-      }
-      catch(SQLException e) {
-        throw context.wrapException("execution failed for: " + ps.toString(), e);
-      }
-    }
-    catch(SQLException e) {
-      throw context.wrapException("closing statement failed", e);
-    }
+    return context.executeUpdate();
   }
 
   /**
@@ -72,53 +63,34 @@ public class StatementExecutor<X extends Exception> implements RowSteps<X>, Term
    * @throws X when execution fails
    */
   public void execute() throws X {
-    try(PreparedStatement ps = context.createPreparedStatement()) {
-      try {
-        ps.execute();
-      }
-      catch(SQLException e) {
-        throw context.wrapException("execution failed for: " + ps.toString(), e);
-      }
-    }
-    catch(SQLException e) {
-      throw context.wrapException("closing statement failed", e);
-    }
+    context.execute();
   }
 
   @Override
-  public boolean consume(Consumer<Row> consumer, long max) throws X {
-    if(max <= 0) {
-      throw new IllegalArgumentException("max must be positive: " + max);
-    }
+  public boolean consume(JdbcConsumer<Row> consumer, long max) throws X {
+    return context.consume(
+      consumer,
+      max,
+      ps -> new JdbcIterator<>() {
+        final ResultSet rs = ps.getResultSet();
+        final int columnCount = rs.getMetaData().getColumnCount();
 
-    long rowsLeft = max;
+        @Override
+        public boolean next() throws SQLException {
+          return rs.next();
+        }
 
-    try(PreparedStatement ps = context.createPreparedStatement()) {
-      try {
-        ps.execute();
+        @Override
+        public Row get() throws SQLException {
+          Object[] row = new Object[columnCount];
 
-        try(ResultSet rs = ps.getResultSet()) {
-          int columnCount = rs.getMetaData().getColumnCount();
-
-          while(rs.next() && rowsLeft-- > 0) {
-            Object[] row = new Object[columnCount];
-
-            for(int i = 0; i < columnCount; i++) {
-              row[i] = rs.getObject(i + 1);
-            }
-
-            consumer.accept(new StaticRow(row));
+          for(int i = 0; i < columnCount; i++) {
+            row[i] = rs.getObject(i + 1);
           }
 
-          return rowsLeft > 0 ? false : rs.next();
+          return new StaticRow(row);
         }
       }
-      catch(SQLException e) {
-        throw context.wrapException("execution failed for: " + ps.toString(), e);
-      }
-    }
-    catch(SQLException e) {
-      throw context.wrapException("closing statement failed", e);
-    }
+    );
   }
 }

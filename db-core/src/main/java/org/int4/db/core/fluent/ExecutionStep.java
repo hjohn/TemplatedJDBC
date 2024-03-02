@@ -4,9 +4,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Objects;
-import java.util.function.Consumer;
 
+import org.int4.db.core.util.JdbcConsumer;
 import org.int4.db.core.util.JdbcFunction;
+import org.int4.db.core.util.JdbcIterator;
 
 public class ExecutionStep<T, X extends Exception> implements MappingSteps<T, X>, TerminalMappingSteps<T, X> {
   private final Context<X> context;
@@ -27,35 +28,24 @@ public class ExecutionStep<T, X extends Exception> implements MappingSteps<T, X>
   }
 
   @Override
-  public boolean consume(Consumer<T> consumer, long max) throws X {
-    Objects.requireNonNull(consumer, "consumer");
+  public boolean consume(JdbcConsumer<T> consumer, long max) throws X {
+    return context.consume(
+      r -> consumer.accept(flatStep.apply(r)),
+      max,
+      ps -> new JdbcIterator<>() {
+        final ResultSet rs = step.apply(ps);
+        final DynamicRow row = new DynamicRow(rs);
 
-    if(max <= 0) {
-      throw new IllegalArgumentException("max must be positive: " + max);
-    }
+        @Override
+        public boolean next() throws SQLException {
+          return rs.next();
+        }
 
-    long rowsLeft = max;
-
-    try(PreparedStatement ps = context.createPreparedStatement()) {
-      try {
-        ps.execute();
-
-        try(ResultSet rs = step.apply(ps)) {
-          DynamicRow row = new DynamicRow(rs);
-
-          while(rs.next() && rowsLeft-- > 0) {
-            consumer.accept(flatStep.apply(row));
-          }
-
-          return rowsLeft > 0 ? false : rs.next();
+        @Override
+        public Row get() {
+          return row;
         }
       }
-      catch(SQLException e) {
-        throw context.wrapException("execution failed for: " + ps.toString(), e);
-      }
-    }
-    catch(SQLException e) {
-      throw context.wrapException("closing statement failed", e);
-    }
+    );
   }
 }
