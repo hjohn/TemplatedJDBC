@@ -8,6 +8,16 @@ import java.sql.SQLException;
 public interface Row {
 
   /**
+   * Creates a row with the given data.
+   * 
+   * @param data an array with values for each column of the row, cannot be {@code null}
+   * @throws NullPointerException when any argument is {@code null}
+   */
+  static Row of(Object... data) {
+    return new StaticRow(data);
+  }
+
+  /**
    * Gets the number of columns in this row.
    *
    * @return the number of columns in this row, always positive

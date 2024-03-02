@@ -15,7 +15,6 @@ import java.util.Objects;
 import org.int4.db.core.fluent.Extractor;
 import org.int4.db.core.fluent.Reflector;
 import org.int4.db.core.fluent.Row;
-import org.int4.db.core.fluent.StaticRow;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -114,8 +113,8 @@ public class DatabaseIT {
         );
 
         assertThat(list).containsExactly(
-          new StaticRow(new Object[] {company2.id, company2.name, Timestamp.from(company2.foundingTime), company2.genderRatio, company2.royal}),
-          new StaticRow(new Object[] {company1.id, company1.name, Timestamp.from(company1.foundingTime), company1.genderRatio, company1.royal})
+          Row.of(company2.id, company2.name, Timestamp.from(company2.foundingTime), company2.genderRatio, company2.royal),
+          Row.of(company1.id, company1.name, Timestamp.from(company1.foundingTime), company1.genderRatio, company1.royal)
         );
       }
     }

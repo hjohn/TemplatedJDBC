@@ -10,7 +10,7 @@ import java.util.Objects;
  * An implementation of {@link Row} that gets its data from
  * an array.
  */
-public class StaticRow implements Row {
+class StaticRow implements Row {
   private final Object[] data;
 
   /**
@@ -22,7 +22,7 @@ public class StaticRow implements Row {
    * @param data an array, cannot be {@code null}
    * @throws NullPointerException when any argument is {@code null}
    */
-  public StaticRow(Object[] data) {
+  StaticRow(Object... data) {
     this.data = Objects.requireNonNull(data, "data");
   }
 
