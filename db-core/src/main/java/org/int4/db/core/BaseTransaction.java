@@ -22,64 +22,69 @@ abstract class BaseTransaction<X extends Exception> implements AutoCloseable {
     X translate(BaseTransaction<X> tx, String message, SQLException e);
   }
 
-  final Connection connection;
   final ExceptionTranslator<X> exceptionTranslator;
 
-  private final BaseTransaction<?> parent;
-  private final Savepoint savepoint;
+  private final BaseTransaction<X> parent;
   private final long id;
   private final boolean readOnly;
   private final List<Consumer<TransactionResult>> completionHooks = new ArrayList<>();
+  private final Supplier<Connection> connectionSupplier;
 
+  private Connection connection;
+  private Savepoint savepoint;
   private int activeNestedTransactions;
   private boolean finished;
 
-  BaseTransaction(Supplier<Connection> connectionProvider, boolean readOnly, ExceptionTranslator<X> exceptionTranslator) throws X {
-    this.parent = CURRENT_TRANSACTION.get();
+  BaseTransaction(Supplier<Connection> connectionSupplier, boolean readOnly, ExceptionTranslator<X> exceptionTranslator) {
+    this.parent = (BaseTransaction<X>)CURRENT_TRANSACTION.get();
+    this.connectionSupplier = connectionSupplier;
     this.exceptionTranslator = exceptionTranslator;
     this.readOnly = readOnly;
     this.id = ++uniqueIdentifier;
 
-    try {
-      if(parent == null) {
-        this.connection = connectionProvider.get();
-        this.savepoint = null;
+    CURRENT_TRANSACTION.set(this);
 
-        connection.setAutoCommit(false);
+    if(parent != null) {
+      parent.activeNestedTransactions++;
+    }
 
-        if(readOnly) {
-          try(PreparedStatement ps = connection.prepareStatement("SET TRANSACTION READ ONLY")) {
-            ps.execute();
+    LOGGER.log(Level.TRACE, "New Transaction " + this);
+  }
+
+  final Connection getConnection() throws X {
+    ensureNotFinished();
+
+    return getConnectionInternal();
+  }
+
+  private Connection getConnectionInternal() throws X {
+    if(connection == null) {
+      try {
+        if(parent == null) {
+          this.connection = connectionSupplier.get();
+
+          connection.setAutoCommit(false);
+
+          if(readOnly) {
+            try(PreparedStatement ps = connection.prepareStatement("SET TRANSACTION READ ONLY")) {
+              ps.execute();
+            }
           }
         }
+        else {
+          this.connection = parent.getConnectionInternal();
+          this.savepoint = connection.setSavepoint();
+        }
       }
-      else {
-        this.connection = parent.connection;
-        this.savepoint = connection.setSavepoint();
-
-        parent.incrementNestedTransactions();
+      catch(SQLException e) {
+        throw exceptionTranslator.translate(this, "Exception while creating new transaction", e);
       }
-
-      LOGGER.log(Level.TRACE, "New Transaction " + this);
-    }
-    catch(SQLException e) {
-      throw exceptionTranslator.translate(this, "Exception while creating new transaction", e);
     }
 
-    assert (this.parent != null && this.savepoint != null) || (this.parent == null && this.savepoint == null);
-
-    CURRENT_TRANSACTION.set(this);
+    return connection;
   }
 
-  private void incrementNestedTransactions() {
-    activeNestedTransactions++;
-  }
-
-  private void decrementNestedTransactions() {
-    activeNestedTransactions--;
-  }
-
-  void ensureNotFinished() {
+  private void ensureNotFinished() {
     if(finished) {
       throw new IllegalStateException(this + ": Transaction already ended");
     }
@@ -112,81 +117,83 @@ abstract class BaseTransaction<X extends Exception> implements AutoCloseable {
     }
   }
 
-  @SuppressWarnings("resource")
-  private static void endTransaction() {
-    BaseTransaction<?> parent = CURRENT_TRANSACTION.get().parent;
-
-    if(parent == null) {
-      CURRENT_TRANSACTION.remove();
-    }
-    else {
-      CURRENT_TRANSACTION.set(parent);
-    }
-  }
-
   private void finishTransaction(boolean commit) throws X {
     ensureNotFinished();
 
-    endTransaction();
-
     LOGGER.log(Level.TRACE, this + (commit ? ": COMMIT" : ": ROLLBACK"));
 
-    try {
-      if(parent == null) {
-        boolean committed = false;
+    finished = true;
 
-        try {
-          if(commit) {
-            connection.commit();
+    if(parent != null) {
+      endNestedTransaction(commit);
+    }
+    else {
+      boolean noException = false;
 
-            committed = true;
-          }
-          else {
-            connection.rollback();
-          }
-        }
-        catch(SQLException e) {
-          throw exceptionTranslator.translate(this, "Exception while committing/rolling back connection", e);
-        }
-        finally {
-          for(Consumer<TransactionResult> consumer : completionHooks) {
-            try {
-              consumer.accept(committed ? TransactionResult.COMMITTED : TransactionResult.ROLLED_BACK);
-            }
-            catch(Exception e) {
-              LOGGER.log(Level.WARNING, "Commit hook for " + this + " threw exception: " + consumer, e);
-            }
-          }
-
-          completionHooks.clear();
-
-          try {
-            connection.close();
-          }
-          catch(SQLException e) {
-            LOGGER.log(Level.DEBUG, this + ": exception while closing connection: " + e);
-          }
-        }
+      try {
+        endTopLevelTransaction(commit);
+        noException = true;
       }
-      else {
-        try {
-          if(commit) {
-            connection.releaseSavepoint(savepoint);
+      finally {
+        TransactionResult result = noException && commit ? TransactionResult.COMMITTED : TransactionResult.ROLLED_BACK;
+
+        for(Consumer<TransactionResult> consumer : completionHooks) {
+          try {
+            consumer.accept(result);
           }
-          else {
-            connection.rollback(savepoint);
+          catch(Exception e) {
+            LOGGER.log(Level.WARNING, "Commit hook for " + this + " threw exception: " + consumer, e);
           }
         }
-        catch(SQLException e) {
-          throw exceptionTranslator.translate(this, "Exception while finishing nested transaction", e);
-        }
-        finally {
-          parent.decrementNestedTransactions();
-        }
+
+        completionHooks.clear();
       }
     }
-    finally {
-      finished = true;
+  }
+
+  private void endNestedTransaction(boolean commit) throws X {
+    parent.activeNestedTransactions--;
+
+    CURRENT_TRANSACTION.set(parent);
+
+    if(connection != null) {
+      try {
+        if(commit) {
+          connection.releaseSavepoint(savepoint);
+        }
+        else {
+          connection.rollback(savepoint);
+        }
+      }
+      catch(SQLException e) {
+        throw exceptionTranslator.translate(this, "Exception while finishing nested transaction", e);
+      }
+    }
+  }
+
+  private void endTopLevelTransaction(boolean commit) throws X {
+    CURRENT_TRANSACTION.remove();
+
+    if(connection != null) {
+      try {
+        if(commit) {
+          connection.commit();
+        }
+        else {
+          connection.rollback();
+        }
+      }
+      catch(SQLException e) {
+        throw exceptionTranslator.translate(this, "Exception while committing/rolling back connection", e);
+      }
+      finally {
+        try {
+          connection.close();
+        }
+        catch(SQLException e) {
+          LOGGER.log(Level.DEBUG, this + ": exception while closing connection: " + e);
+        }
+      }
     }
   }
 

@@ -31,9 +31,7 @@ public class Transaction extends BaseTransaction<DatabaseException> implements P
       @Override
       public PreparedStatement createPreparedStatement() {
         try {
-          ensureNotFinished();
-
-          return sql.toPreparedStatement(Transaction.this.connection);
+          return sql.toPreparedStatement(getConnection());
         }
         catch(SQLException e) {
           throw new DatabaseException(Transaction.this + ": creating statement failed for: " + sql, e);

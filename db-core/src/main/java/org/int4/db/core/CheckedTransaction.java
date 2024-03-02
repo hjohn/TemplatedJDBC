@@ -14,8 +14,8 @@ import org.int4.db.core.fluent.StatementExecutor;
  */
 public class CheckedTransaction extends BaseTransaction<SQLException> implements Processor<StatementExecutor<SQLException>, SQLException> {
 
-  CheckedTransaction(Supplier<Connection> connectionProvider, boolean readOnly) throws SQLException {
-    super(connectionProvider, readOnly, (tx, msg, cause) -> new SQLException(tx + ": " + msg, cause));
+  CheckedTransaction(Supplier<Connection> connectionSupplier, boolean readOnly) {
+    super(connectionSupplier, readOnly, (tx, msg, cause) -> new SQLException(tx + ": " + msg, cause));
   }
 
   @Override
@@ -31,9 +31,7 @@ public class CheckedTransaction extends BaseTransaction<SQLException> implements
       @Override
       public PreparedStatement createPreparedStatement() throws SQLException {
         try {
-          ensureNotFinished();
-
-          return sql.toPreparedStatement(connection);
+          return sql.toPreparedStatement(getConnection());
         }
         catch(SQLException e) {
           throw new SQLExceptionWrapper(CheckedTransaction.this + ": creating statement failed for: " + sql, e);

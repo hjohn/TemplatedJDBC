@@ -17,9 +17,12 @@ import org.mockito.quality.Strictness;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import nl.altindag.log.LogCaptor;
@@ -54,6 +57,8 @@ public class DatabaseTest {
   public void shouldAutoRollbackTransaction() throws SQLException {
     assertThrows(IllegalArgumentException.class, () -> {
       try(Transaction transaction = database.beginTransaction()) {
+        transaction.getConnection();  // simulate statement being executed
+
         throw new IllegalArgumentException();
       }
     });
@@ -65,11 +70,21 @@ public class DatabaseTest {
   @Test
   public void shouldCommitTransaction() throws SQLException {
     try(Transaction transaction = database.beginTransaction()) {
+      transaction.getConnection();  // simulate statement being executed
       transaction.commit();
     }
 
     verify(connection).commit();
     verify(connection, never()).rollback();
+  }
+
+  @Test
+  public void shouldNotCommitOrRollbackUnusedTransaction() {
+    try(Transaction transaction = database.beginTransaction()) {
+      transaction.commit();
+    }
+
+    verifyNoInteractions(connection);
   }
 
   @Test
@@ -94,12 +109,34 @@ public class DatabaseTest {
   public void shouldAllowNestedTransaction() throws SQLException {
     try(Transaction transaction = database.beginTransaction()) {
       try(Transaction nestedTransaction = database.beginTransaction()) {
+        nestedTransaction.getConnection();  // simulate statement being executed
         nestedTransaction.commit();
       }
 
+      verify(connection).releaseSavepoint(any(Savepoint.class));
       verify(connection, never()).rollback();
       verify(connection, never()).commit();
 
+      transaction.getConnection();  // simulate statement being executed
+      transaction.commit();
+    }
+
+    verify(connection).commit();
+  }
+
+  @Test
+  public void shouldRollbackNestedTransaction() throws SQLException {
+    try(Transaction transaction = database.beginTransaction()) {
+      try(Transaction nestedTransaction = database.beginTransaction()) {
+        nestedTransaction.getConnection();  // simulate statement being executed
+        nestedTransaction.rollback();
+      }
+
+      verify(connection).rollback(any(Savepoint.class));
+      verify(connection, never()).rollback();
+      verify(connection, never()).commit();
+
+      transaction.getConnection();  // simulate statement being executed
       transaction.commit();
     }
 
@@ -118,9 +155,18 @@ public class DatabaseTest {
   @Test
   public void shouldCommitReadOnlyTransactions() throws SQLException {
     try(Transaction transaction = database.beginReadOnlyTransaction()) {
+      transaction.getConnection();  // simulate statement being executed
     }
 
     verify(connection).commit();
+  }
+
+  @Test
+  public void shouldNotCommitOrRollbackUnusedReadOnlyTransactions() {
+    try(Transaction transaction = database.beginReadOnlyTransaction()) {
+    }
+
+    verifyNoInteractions(connection);
   }
 
   @Test
@@ -145,6 +191,22 @@ public class DatabaseTest {
   }
 
   @Test
+  public void shouldCallCompletionHookEvenIfOuterTransactionExitsExceptionally() throws SQLException {
+    AtomicReference<TransactionResult> reference = new AtomicReference<>();
+
+    doThrow(RuntimeException.class).when(connection).rollback();
+
+    try(Transaction transaction = database.beginTransaction()) {
+      transaction.addCompletionHook(reference::set);
+      transaction.getConnection();  // simulate statement being executed
+    }
+    catch(Exception e) {
+    }
+
+    assertThat(reference.get()).isEqualTo(TransactionResult.ROLLED_BACK);
+  }
+
+  @Test
   public void shouldIgnoreExceptionsThrownFromCompletionHook() throws SQLException {
     LogCaptor captor = LogCaptor.forClass(BaseTransaction.class);
 
@@ -154,6 +216,7 @@ public class DatabaseTest {
         throw new IllegalStateException();
       });
 
+      transaction.getConnection();  // simulate statement being executed
       transaction.commit();
     }
     finally {
