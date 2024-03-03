@@ -6,7 +6,7 @@ import java.util.Objects;
 import org.int4.db.core.util.ThrowingConsumer;
 import org.int4.db.core.util.ThrowingFunction;
 
-interface DatabaseFunctions<T extends BaseTransaction<X>, X extends Exception> {
+public interface DatabaseFunctions<T extends BaseTransaction<X>, X extends Exception> {
 
   /**
    * Starts a read/write transaction which throws the unchecked

@@ -12,13 +12,13 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-abstract class BaseTransaction<X extends Exception> implements AutoCloseable {
+public abstract class BaseTransaction<X extends Exception> implements AutoCloseable {
   private static final Logger LOGGER = System.getLogger(BaseTransaction.class.getName());
   private static final ThreadLocal<BaseTransaction<?>> CURRENT_TRANSACTION = new ThreadLocal<>();
 
   private static long uniqueIdentifier;
 
-  interface ExceptionTranslator<X extends Exception> {
+  protected interface ExceptionTranslator<X extends Exception> {
     X translate(BaseTransaction<X> tx, String message, SQLException e);
   }
 
@@ -34,7 +34,7 @@ abstract class BaseTransaction<X extends Exception> implements AutoCloseable {
   private int activeNestedTransactions;
   private boolean finished;
 
-  BaseTransaction(Supplier<Connection> connectionSupplier, boolean readOnly, ExceptionTranslator<X> exceptionTranslator) {
+  protected BaseTransaction(Supplier<Connection> connectionSupplier, boolean readOnly, ExceptionTranslator<X> exceptionTranslator) {
     this.parent = CURRENT_TRANSACTION.get();
     this.connectionSupplier = connectionSupplier;
     this.exceptionTranslator = exceptionTranslator;

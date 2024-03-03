@@ -8,11 +8,23 @@ import java.util.Objects;
  */
 public class DatabaseException extends RuntimeException {
 
-  DatabaseException(String message, SQLException cause) {
-    super(message, Objects.requireNonNull(cause, "cause"));
+  /**
+   * Constructs a new instance.
+   *
+   * @param message a message, cannot be {@code null}
+   * @param cause an {@link SQLException}, cannot be {@code null}
+   * @throws NullPointerException when any argument is {@code null}
+   */
+  public DatabaseException(String message, SQLException cause) {
+    super(Objects.requireNonNull(message, "message"), Objects.requireNonNull(cause, "cause"));
   }
 
-  SQLException getSQLException() {
+  /**
+   * Returns the {@link SQLException} wrapped by this exception.
+   *
+   * @return an {@link SQLException}, never {@code null}
+   */
+  public SQLException getSQLException() {
     return (SQLException)getCause();
   }
 }
