@@ -2,6 +2,7 @@ package org.int4.db.core;
 
 import java.lang.StringTemplate.Processor;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.function.Supplier;
 
@@ -22,16 +23,19 @@ public class CheckedTransaction extends BaseTransaction<SQLException> implements
     SafeSQL sql = new SafeSQL(stringTemplate);
 
     return new StatementExecutor<>(new Context<>(
-      () -> {
-        try {
-          return sql.toPreparedStatement(getConnection());
-        }
-        catch(SQLException e) {
-          throw new SQLExceptionWrapper(CheckedTransaction.this + ": creating statement failed for: " + sql, e);
-        }
-      },
+      () -> createPreparedStatement(sql),
       (message, cause) -> new SQLExceptionWrapper(CheckedTransaction.this + ": " + message, cause)
     ));
+  }
+
+  @SuppressWarnings("resource")
+  private PreparedStatement createPreparedStatement(SafeSQL sql) throws SQLExceptionWrapper {
+    try {
+      return sql.toPreparedStatement(getConnection());
+    }
+    catch(SQLException e) {
+      throw new SQLExceptionWrapper(CheckedTransaction.this + ": creating statement failed for: " + sql, e);
+    }
   }
 
   class SQLExceptionWrapper extends SQLException {

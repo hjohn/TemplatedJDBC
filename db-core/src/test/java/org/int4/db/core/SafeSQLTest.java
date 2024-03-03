@@ -68,7 +68,11 @@ public class SafeSQLTest {
     verify(statement).setObject(7, false);
     verify(statement).setObject(8, "John");
 
-    assertThat(sql.toString()).isEqualTo(template.toString());
+    assertThat(sql.toString()).isEqualTo("""
+      INSERT INTO employees (name) VALUES (?);
+      INSERT INTO employees (name, birth_date, salary, overtime, gender) VALUES (?,?,?,?,?);
+      SELECT * FROM employees WHERE overtime = ? AND name = ?
+    """);
   }
 
   @SuppressWarnings("resource")

@@ -22,22 +22,51 @@ import org.int4.db.core.fluent.Identifier;
 import org.int4.db.core.fluent.FieldValueSetParameter.Entries;
 import org.int4.db.core.fluent.FieldValueSetParameter.Values;
 
-class SafeSQL {
+/**
+ * Wrapper around a {@link StringTemplate} that can provide SQL strings and
+ * created {@link PreparedStatement}s.
+ */
+public class SafeSQL {
   private static final Predicate<String> NOT_EMPTY = Predicate.not(String::isEmpty);
   private static final Pattern ALIAS = Pattern.compile(".*? (([a-zA-Z][a-zA-Z_0-9]*) *\\. *)");
 
-  private final StringTemplate template;
+  private final String sql;
+  private final List<Object> values;
 
-  SafeSQL(StringTemplate template) {
-    this.template = template;
+  /**
+   * Constructs a new instance.
+   *
+   * @param template a {@link StringTemplate}, cannot be {@code null}
+   * @throws NullPointerException when any argument is {@code null}
+   */
+  public SafeSQL(StringTemplate template) {
+    this.values = template.values();
+    this.sql = createSQL(template);
+  }
+
+  /**
+   * Returns the generated SQL string.
+   *
+   * @return the generated SQL string, never {@code null}
+   */
+  public String getSQL() {
+    return sql;
   }
 
   @Override
   public String toString() {
-    return template.toString();
+    return sql;
   }
 
   PreparedStatement toPreparedStatement(Connection connection) throws SQLException {
+    PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+
+    fillParameters(ps, values);
+
+    return ps;
+  }
+
+  private static String createSQL(StringTemplate template) {
     StringBuilder sb = new StringBuilder();
     List<String> fragments = template.fragments();
     List<Object> values = template.values();
@@ -85,11 +114,7 @@ class SafeSQL {
 
     sb.append(fragments.getLast());
 
-    PreparedStatement ps = connection.prepareStatement(sb.toString(), Statement.RETURN_GENERATED_KEYS);
-
-    fillParameters(ps, template.values());
-
-    return ps;
+    return sb.toString();
   }
 
   private static void fillParameters(PreparedStatement ps, List<Object> values) throws SQLException {
