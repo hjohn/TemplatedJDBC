@@ -20,7 +20,7 @@ public final class CheckedDatabase implements DatabaseFunctions<CheckedTransacti
   }
 
   @Override
-  public CheckedTransaction beginTransaction(boolean readOnly) throws SQLException {
+  public CheckedTransaction beginTransaction(boolean readOnly) {
     return new CheckedTransaction(connectionProvider, readOnly);
   }
 

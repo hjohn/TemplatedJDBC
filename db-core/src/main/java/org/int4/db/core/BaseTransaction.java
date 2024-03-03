@@ -22,13 +22,12 @@ abstract class BaseTransaction<X extends Exception> implements AutoCloseable {
     X translate(BaseTransaction<X> tx, String message, SQLException e);
   }
 
-  final ExceptionTranslator<X> exceptionTranslator;
-
-  private final BaseTransaction<X> parent;
+  private final BaseTransaction<?> parent;
   private final long id;
   private final boolean readOnly;
   private final List<Consumer<TransactionResult>> completionHooks = new ArrayList<>();
   private final Supplier<Connection> connectionSupplier;
+  private final ExceptionTranslator<X> exceptionTranslator;
 
   private Connection connection;
   private Savepoint savepoint;
@@ -36,7 +35,7 @@ abstract class BaseTransaction<X extends Exception> implements AutoCloseable {
   private boolean finished;
 
   BaseTransaction(Supplier<Connection> connectionSupplier, boolean readOnly, ExceptionTranslator<X> exceptionTranslator) {
-    this.parent = (BaseTransaction<X>)CURRENT_TRANSACTION.get();
+    this.parent = CURRENT_TRANSACTION.get();
     this.connectionSupplier = connectionSupplier;
     this.exceptionTranslator = exceptionTranslator;
     this.readOnly = readOnly;
@@ -76,8 +75,18 @@ abstract class BaseTransaction<X extends Exception> implements AutoCloseable {
           this.savepoint = connection.setSavepoint();
         }
       }
-      catch(SQLException e) {
-        throw exceptionTranslator.translate(this, "Exception while creating new transaction", e);
+      catch(Exception e) {
+        if(e instanceof SQLException se) {
+          throw exceptionTranslator.translate(this, "Exception while creating new transaction", se);
+        }
+
+        /*
+         * This probably can't happen, but needed because the generic exception type of parent isn't fully known.
+         * Either it throws a DatabaseException which is runtime, and so it won't get here, or it is an SQLException
+         * in which case the if above handles it.
+         */
+
+        throw new IllegalStateException("Unexpected type of exception", e);
       }
     }
 
