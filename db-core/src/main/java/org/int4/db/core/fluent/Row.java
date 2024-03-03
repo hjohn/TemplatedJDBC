@@ -1,7 +1,5 @@
 package org.int4.db.core.fluent;
 
-import java.sql.SQLException;
-
 /**
  * Represents a single row of a result set.
  */
@@ -9,8 +7,9 @@ public interface Row {
 
   /**
    * Creates a row with the given data.
-   * 
+   *
    * @param data an array with values for each column of the row, cannot be {@code null}
+   * @return a new row, never {@code null}
    * @throws NullPointerException when any argument is {@code null}
    */
   static Row of(Object... data) {
@@ -21,9 +20,9 @@ public interface Row {
    * Gets the number of columns in this row.
    *
    * @return the number of columns in this row, always positive
-   * @throws SQLException when a database error occurs
+   * @throws RowAccessException when a database error occurs
    */
-  int getColumnCount() throws SQLException;
+  int getColumnCount();
 
   /**
    * Gets the value of the indicated column as a byte array.
@@ -31,10 +30,10 @@ public interface Row {
    *
    * @param columnIndex a column index, cannot be negative and must be less than the column count
    * @return the value as a byte array, never {@code null}
-   * @throws SQLException when the column index is invalid, or the value could not be
+   * @throws RowAccessException when the column index is invalid, or the value could not be
    *   converted to the requested type
    */
-  byte[] getBytes(int columnIndex) throws SQLException;
+  byte[] getBytes(int columnIndex);
 
   /**
    * Gets the value of the indicated column as a {@link String}.
@@ -42,10 +41,10 @@ public interface Row {
    *
    * @param columnIndex a column index, cannot be negative and must be less than the column count
    * @return the value as a {@link String}, never {@code null}
-   * @throws SQLException when the column index is invalid, or the value could not be
+   * @throws RowAccessException when the column index is invalid, or the value could not be
    *   converted to the requested type
    */
-  String getString(int columnIndex) throws SQLException;
+  String getString(int columnIndex);
 
   /**
    * Gets the value of the indicated column without further conversion.
@@ -53,10 +52,10 @@ public interface Row {
    *
    * @param columnIndex a column index, cannot be negative and must be less than the column count
    * @return the value, never {@code null}
-   * @throws SQLException when the column index is invalid, or the value could not be
+   * @throws RowAccessException when the column index is invalid, or the value could not be
    *   converted to the requested type
    */
-  Object getObject(int columnIndex) throws SQLException;
+  Object getObject(int columnIndex);
 
   /**
    * Gets the value of the indicated column as the indicated type {@code T}.
@@ -67,10 +66,10 @@ public interface Row {
    * @param type a type to convert to, cannot be {@code null}
    * @return the converted value, never {@code null}
    * @throws NullPointerException when any argument is {@code null}
-   * @throws SQLException when the column index is invalid, or the value could not be
+   * @throws RowAccessException when the column index is invalid, or the value could not be
    *   converted to the requested type
    */
-  <T> T getObject(int columnIndex, Class<T> type) throws SQLException;
+  <T> T getObject(int columnIndex, Class<T> type);
 
   /**
    * Gets the value of the indicated column as a {@code double}.
@@ -78,10 +77,10 @@ public interface Row {
    *
    * @param columnIndex a column index, cannot be negative and must be less than the column count
    * @return the value as a {@code double}, never {@code null}
-   * @throws SQLException when the column index is invalid, or the value could not be
+   * @throws RowAccessException when the column index is invalid, or the value could not be
    *   converted to the requested type
    */
-  double getDouble(int columnIndex) throws SQLException;
+  double getDouble(int columnIndex);
 
   /**
    * Gets the value of the indicated column as a {@code long}.
@@ -89,10 +88,10 @@ public interface Row {
    *
    * @param columnIndex a column index, cannot be negative and must be less than the column count
    * @return the value as a {@code long}, never {@code null}
-   * @throws SQLException when the column index is invalid, or the value could not be
+   * @throws RowAccessException when the column index is invalid, or the value could not be
    *   converted to the requested type
    */
-  long getLong(int columnIndex) throws SQLException;
+  long getLong(int columnIndex);
 
   /**
    * Gets the value of the indicated column as a {@code int}.
@@ -100,10 +99,10 @@ public interface Row {
    *
    * @param columnIndex a column index, cannot be negative and must be less than the column count
    * @return the value as a {@code int}, never {@code null}
-   * @throws SQLException when the column index is invalid, or the value could not be
+   * @throws RowAccessException when the column index is invalid, or the value could not be
    *   converted to the requested type
    */
-  int getInt(int columnIndex) throws SQLException;
+  int getInt(int columnIndex);
 
   /**
    * Gets the value of the indicated column as a {@code boolean}.
@@ -111,9 +110,9 @@ public interface Row {
    *
    * @param columnIndex a column index, cannot be negative and must be less than the column count
    * @return the value as a {@code boolean}, never {@code null}
-   * @throws SQLException when the column index is invalid, or the value could not be
+   * @throws RowAccessException when the column index is invalid, or the value could not be
    *   converted to the requested type
    */
-  boolean getBoolean(int columnIndex) throws SQLException;
+  boolean getBoolean(int columnIndex);
 
 }

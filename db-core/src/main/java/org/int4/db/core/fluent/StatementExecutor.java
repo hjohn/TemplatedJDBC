@@ -4,9 +4,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
-import org.int4.db.core.util.JdbcConsumer;
-import org.int4.db.core.util.JdbcFunction;
 import org.int4.db.core.util.JdbcIterator;
 
 /**
@@ -39,7 +39,7 @@ public class StatementExecutor<X extends Exception> implements RowSteps<X>, Term
   }
 
   @Override
-  public <R> ExecutionStep<R, X> map(JdbcFunction<Row, R> mapper) {
+  public <R> ExecutionStep<R, X> map(Function<Row, R> mapper) {
     Objects.requireNonNull(mapper, "mapper");
 
     return new ExecutionStep<>(context, PreparedStatement::getResultSet, mapper);
@@ -67,7 +67,7 @@ public class StatementExecutor<X extends Exception> implements RowSteps<X>, Term
   }
 
   @Override
-  public boolean consume(JdbcConsumer<Row> consumer, long max) throws X {
+  public boolean consume(Consumer<Row> consumer, long max) throws X {
     return context.consume(
       consumer,
       max,

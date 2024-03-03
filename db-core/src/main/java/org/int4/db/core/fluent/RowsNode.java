@@ -3,6 +3,7 @@ package org.int4.db.core.fluent;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.Objects;
+import java.util.function.Function;
 
 import org.int4.db.core.util.JdbcFunction;
 
@@ -16,7 +17,7 @@ class RowsNode<X extends Exception> implements RowSteps<X> {
   }
 
   @Override
-  public <T> ExecutionStep<T, X> map(JdbcFunction<Row, T> mapper) {
+  public <T> ExecutionStep<T, X> map(Function<Row, T> mapper) {
     Objects.requireNonNull(mapper, "mapper");
 
     return new ExecutionStep<>(context, step, mapper);

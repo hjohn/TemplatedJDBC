@@ -3,8 +3,7 @@ package org.int4.db.core.fluent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-
-import org.int4.db.core.util.JdbcConsumer;
+import java.util.function.Consumer;
 
 /**
  * Provides terminal operations that will trigger statement execution.
@@ -83,7 +82,7 @@ public interface TerminalMappingSteps<T, X extends Exception> {
    * @throws X when an exception occurs
    * @throws NullPointerException when any argument is {@code null}
    */
-  default void consume(JdbcConsumer<T> consumer) throws X {
+  default void consume(Consumer<T> consumer) throws X {
     consume(consumer, Long.MAX_VALUE);
   }
 
@@ -98,5 +97,5 @@ public interface TerminalMappingSteps<T, X extends Exception> {
    * @throws X when an exception occurs
    * @throws NullPointerException when any argument is {@code null}
    */
-  boolean consume(JdbcConsumer<T> consumer, long max) throws X;
+  boolean consume(Consumer<T> consumer, long max) throws X;
 }

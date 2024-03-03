@@ -12,6 +12,10 @@ class DynamicRow implements Row {
    * Notes:
    * - Getting column count is often cheap (no database call), at least for Postgres
    * - Accessing columns by name is much slower and error prone (column names are not required to be unique in a result set)
+   *
+   * This class tunnels the SQLException in a wrapper as it is only supplied in cases
+   * when data is being consumed directly as part of a running transaction. In all
+   * other cases, a static row is returned which can't throw any exceptions.
    */
 
   DynamicRow(ResultSet rs) {
@@ -19,51 +23,96 @@ class DynamicRow implements Row {
   }
 
   @Override
-  public int getColumnCount() throws SQLException {
-    return rs.getMetaData().getColumnCount();  // at least for Postgres, this is very cheap (no database call)
-  }
-
-  @Override
-  public String getString(int columnIndex) throws SQLException {
-    return rs.getString(columnIndex + 1);
-  }
-
-  @Override
-  public <T> T getObject(int columnIndex, Class<T> type) throws SQLException {
-    if(type == Instant.class) {
-      return type.cast(rs.getObject(columnIndex + 1, Timestamp.class).toInstant());
+  public int getColumnCount() {
+    try {
+      return rs.getMetaData().getColumnCount();  // at least for Postgres, this is very cheap (no database call)
     }
-
-    return type.cast(rs.getObject(columnIndex + 1, type));
+    catch(SQLException e) {
+      throw new RowAccessException(e);
+    }
   }
 
   @Override
-  public Object getObject(int columnIndex) throws SQLException {
-    return rs.getObject(columnIndex + 1);
+  public String getString(int columnIndex) {
+    try {
+      return rs.getString(columnIndex + 1);
+    }
+    catch(SQLException e) {
+      throw new RowAccessException(e);
+    }
   }
 
   @Override
-  public boolean getBoolean(int columnIndex) throws SQLException {
-    return rs.getBoolean(columnIndex + 1);
+  public <T> T getObject(int columnIndex, Class<T> type) {
+    try {
+      if(type == Instant.class) {
+        return type.cast(rs.getObject(columnIndex + 1, Timestamp.class).toInstant());
+      }
+
+      return type.cast(rs.getObject(columnIndex + 1, type));
+    }
+    catch(SQLException e) {
+      throw new RowAccessException(e);
+    }
   }
 
   @Override
-  public int getInt(int columnIndex) throws SQLException {
-    return rs.getInt(columnIndex + 1);
+  public Object getObject(int columnIndex) {
+    try {
+      return rs.getObject(columnIndex + 1);
+    }
+    catch(SQLException e) {
+      throw new RowAccessException(e);
+    }
   }
 
   @Override
-  public long getLong(int columnIndex) throws SQLException {
-    return rs.getLong(columnIndex + 1);
+  public boolean getBoolean(int columnIndex) {
+    try {
+     return rs.getBoolean(columnIndex + 1);
+    }
+    catch(SQLException e) {
+      throw new RowAccessException(e);
+    }
   }
 
   @Override
-  public double getDouble(int columnIndex) throws SQLException {
-    return rs.getDouble(columnIndex + 1);
+  public int getInt(int columnIndex) {
+    try {
+      return rs.getInt(columnIndex + 1);
+    }
+    catch(SQLException e) {
+      throw new RowAccessException(e);
+    }
   }
 
   @Override
-  public byte[] getBytes(int columnIndex) throws SQLException {
-    return rs.getBytes(columnIndex + 1);
+  public long getLong(int columnIndex) {
+    try {
+      return rs.getLong(columnIndex + 1);
+    }
+    catch(SQLException e) {
+      throw new RowAccessException(e);
+    }
+  }
+
+  @Override
+  public double getDouble(int columnIndex) {
+    try {
+      return rs.getDouble(columnIndex + 1);
+    }
+    catch(SQLException e) {
+      throw new RowAccessException(e);
+    }
+  }
+
+  @Override
+  public byte[] getBytes(int columnIndex) {
+    try {
+      return rs.getBytes(columnIndex + 1);
+    }
+    catch(SQLException e) {
+      throw new RowAccessException(e);
+    }
   }
 }

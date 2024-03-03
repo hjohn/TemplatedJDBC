@@ -4,8 +4,8 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Objects;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 
-import org.int4.db.core.util.JdbcConsumer;
 import org.int4.db.core.util.JdbcFunction;
 import org.int4.db.core.util.JdbcIterator;
 import org.int4.db.core.util.ThrowingSupplier;
@@ -27,7 +27,7 @@ public class Context<X extends Exception> {
     return execute(PreparedStatement::getLargeUpdateCount);
   }
 
-  public boolean consume(JdbcConsumer<Row> consumer, long max, JdbcFunction<PreparedStatement, JdbcIterator<Row>> resultSetExtractor) throws X {
+  public boolean consume(Consumer<Row> consumer, long max, JdbcFunction<PreparedStatement, JdbcIterator<Row>> resultSetExtractor) throws X {
     Objects.requireNonNull(consumer, "consumer");
 
     if(max <= 0) {
@@ -35,15 +35,20 @@ public class Context<X extends Exception> {
     }
 
     return execute(ps -> {
-      long rowsLeft = max;
+      try {
+        long rowsLeft = max;
 
-      JdbcIterator<Row> iterator = resultSetExtractor.apply(ps);
+        JdbcIterator<Row> iterator = resultSetExtractor.apply(ps);
 
-      while(iterator.next() && rowsLeft-- > 0) {
-        consumer.accept(iterator.get());
+        while(iterator.next() && rowsLeft-- > 0) {
+          consumer.accept(iterator.get());
+        }
+
+        return rowsLeft > 0 ? false : iterator.next();
       }
-
-      return rowsLeft > 0 ? false : iterator.next();
+      catch(RowAccessException e) {
+        throw e.unwrap();
+      }
     });
   }
 

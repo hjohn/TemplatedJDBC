@@ -1,6 +1,6 @@
 package org.int4.db.core.fluent;
 
-import org.int4.db.core.util.JdbcFunction;
+import java.util.function.Function;
 
 /**
  * Provides steps to convert a type {@code T} to a new type of result.
@@ -18,5 +18,5 @@ public interface MappingSteps<T, X extends Exception> {
    * @return a new {@link ExecutionStep}, never {@code null}
    * @throws NullPointerException when any argument is {@code null}
    */
-  <R> ExecutionStep<R, X> map(JdbcFunction<T, R> mapper);
+  <R> ExecutionStep<R, X> map(Function<T, R> mapper);
 }

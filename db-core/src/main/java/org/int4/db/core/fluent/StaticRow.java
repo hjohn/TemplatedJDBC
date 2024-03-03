@@ -1,6 +1,5 @@
 package org.int4.db.core.fluent;
 
-import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Arrays;
@@ -31,21 +30,21 @@ class StaticRow implements Row {
     return data.length;
   }
 
-  private void ensureValidColumnIndex(int columnIndex) throws SQLException {
+  private void ensureValidColumnIndex(int columnIndex) {
     if(columnIndex < 0 || columnIndex >= data.length) {
-      throw new SQLException("columnIndex is out of range, must be between 0 and " + (data.length - 1) + ", but was: " + columnIndex);
+      throw new IllegalArgumentException("columnIndex is out of range, must be between 0 and " + (data.length - 1) + ", but was: " + columnIndex);
     }
   }
 
   @Override
-  public String getString(int columnIndex) throws SQLException {
+  public String getString(int columnIndex) {
     ensureValidColumnIndex(columnIndex);
 
     return (String)data[columnIndex];
   }
 
   @Override
-  public <T> T getObject(int columnIndex, Class<T> type) throws SQLException {
+  public <T> T getObject(int columnIndex, Class<T> type) {
     ensureValidColumnIndex(columnIndex);
 
     Object value = getObject(columnIndex);
@@ -58,42 +57,42 @@ class StaticRow implements Row {
   }
 
   @Override
-  public Object getObject(int columnIndex) throws SQLException {
+  public Object getObject(int columnIndex) {
     ensureValidColumnIndex(columnIndex);
 
     return data[columnIndex];
   }
 
   @Override
-  public boolean getBoolean(int columnIndex) throws SQLException {
+  public boolean getBoolean(int columnIndex) {
     ensureValidColumnIndex(columnIndex);
 
     return (Boolean)data[columnIndex];
   }
 
   @Override
-  public int getInt(int columnIndex) throws SQLException {
+  public int getInt(int columnIndex) {
     ensureValidColumnIndex(columnIndex);
 
     return (Integer)data[columnIndex];
   }
 
   @Override
-  public long getLong(int columnIndex) throws SQLException {
+  public long getLong(int columnIndex) {
     ensureValidColumnIndex(columnIndex);
 
     return (Long)data[columnIndex];
   }
 
   @Override
-  public double getDouble(int columnIndex) throws SQLException {
+  public double getDouble(int columnIndex) {
     ensureValidColumnIndex(columnIndex);
 
     return (Double)data[columnIndex];
   }
 
   @Override
-  public byte[] getBytes(int columnIndex) throws SQLException {
+  public byte[] getBytes(int columnIndex) {
     ensureValidColumnIndex(columnIndex);
 
     return (byte[])data[columnIndex];
@@ -120,6 +119,6 @@ class StaticRow implements Row {
 
   @Override
   public String toString() {
-    return "StaticRow[data = " + Arrays.toString(data) + "]";
+    return "Row[data = " + Arrays.toString(data) + "]";
   }
 }

@@ -2,13 +2,12 @@ package org.int4.db.core;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
-import java.sql.SQLException;
 import java.util.List;
 
-import org.int4.db.core.fluent.Reflector;
-import org.int4.db.core.fluent.Row;
 import org.int4.db.core.fluent.FieldValueSetParameter.Entries;
 import org.int4.db.core.fluent.FieldValueSetParameter.Values;
+import org.int4.db.core.fluent.Reflector;
+import org.int4.db.core.fluent.Row;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -154,7 +153,7 @@ public class ReflectorTest {
     class AndARowNeedsMapping {
       private final Row row;
 
-      AndARowNeedsMapping(@Mock Row row) throws SQLException {
+      AndARowNeedsMapping(@Mock Row row) {
         this.row = row;
 
         when(row.getString(0)).thenReturn("John");
@@ -166,7 +165,7 @@ public class ReflectorTest {
 
       @ParameterizedTest
       @EnumSource(ReflectorCase.class)
-      void shouldCreateRecord(ReflectorCase c) throws SQLException {
+      void shouldCreateRecord(ReflectorCase c) {
         assertThat(c.reflector.apply(row)).isEqualTo(c.testObject);
       }
     }

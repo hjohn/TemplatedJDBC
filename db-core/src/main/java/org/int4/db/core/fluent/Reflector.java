@@ -14,10 +14,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.int4.db.core.util.JdbcFunction;
 import org.int4.db.core.util.ThrowingFunction;
 
 /**
@@ -79,13 +79,13 @@ public class Reflector<T> extends Extractor<T> implements Mapper<T> {
    * @throws IllegalArgumentException when the field names contain invalid identifiers or duplicates
    * @throws NullPointerException when any argument is {@code null}
    */
-  public static <T> Reflector<T> custom(List<String> fieldNames, JdbcFunction<Row, T> creator, BiFunction<T, Integer, Object> dataExtractor) {
+  public static <T> Reflector<T> custom(List<String> fieldNames, Function<Row, T> creator, BiFunction<T, Integer, Object> dataExtractor) {
     return new Reflector<>(Objects.requireNonNull(fieldNames, "fieldNames"), creator, dataExtractor);
   }
 
-  private final JdbcFunction<Row, T> creator;
+  private final Function<Row, T> creator;
 
-  Reflector(List<String> names, JdbcFunction<Row, T> creator, BiFunction<T, Integer, Object> dataExtractor) {
+  Reflector(List<String> names, Function<Row, T> creator, BiFunction<T, Integer, Object> dataExtractor) {
     super(names, dataExtractor);
 
     this.creator = creator;
@@ -108,7 +108,7 @@ public class Reflector<T> extends Extractor<T> implements Mapper<T> {
   }
 
   @Override
-  public T apply(Row row) throws SQLException {
+  public T apply(Row row) {
     return creator.apply(row);
   }
 
@@ -116,7 +116,7 @@ public class Reflector<T> extends Extractor<T> implements Mapper<T> {
     R apply(T t, U u) throws SQLException;
   }
 
-  private static final Map<Class<?>, ThrowingBiFunction<Row, Integer, ?>> MAP = Map.of(
+  private static final Map<Class<?>, BiFunction<Row, Integer, ?>> MAP = Map.of(
     String.class, Row::getString,
     Boolean.class, Row::getBoolean,
     Integer.class, Row::getInt,
@@ -140,7 +140,7 @@ public class Reflector<T> extends Extractor<T> implements Mapper<T> {
       this.iterator = iterator;
     }
 
-    private <T> T build(Class<T> cls) throws SQLException {
+    private <T> T build(Class<T> cls) {
       RecordComponent[] recordComponents = cls.getRecordComponents();
       Object[] args = new Object[recordComponents.length];
 
@@ -151,7 +151,7 @@ public class Reflector<T> extends Extractor<T> implements Mapper<T> {
           args[i] = build(rc.getType());
         }
         else {
-          ThrowingBiFunction<Row, Integer, ?> valueExtractor = MAP.get(rc.getType());
+          BiFunction<Row, Integer, ?> valueExtractor = MAP.get(rc.getType());
 
           if(valueExtractor == null) {
             args[i] = row.getObject(columnIndex++, rc.getType());
