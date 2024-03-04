@@ -1,5 +1,7 @@
 package org.int4.db.test;
 
+import java.lang.System.Logger;
+import java.lang.System.Logger.Level;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.HashMap;
@@ -28,6 +30,8 @@ import org.int4.db.core.util.ThrowingSupplier;
  * regular expression.
  */
 public class MockDatabase implements Database {
+  private static final Logger LOGGER = System.getLogger(MockDatabase.class.getName());
+
   private final Map<Pattern, ThrowingSupplier<List<Row>, DatabaseException>> queryMocks = new HashMap<>();
   private final Map<Pattern, ThrowingSupplier<Long, DatabaseException>> updateMocks = new HashMap<>();
   private final Map<Pattern, ThrowingRunnable<DatabaseException>> executeMocks = new HashMap<>();
@@ -132,10 +136,14 @@ public class MockDatabase implements Database {
 
       for(Pattern pattern : executeMocks.keySet()) {
         if(pattern.matcher(statement).matches()) {
+          LOGGER.log(Level.INFO, "Mocking statement: '" + pattern + "' matched '" + statement + "'");
+
           executeMocks.get(pattern).run();
           break;
         }
       }
+
+      LOGGER.log(Level.WARNING, "No mock defined for: '" + statement + "'");
     }
 
     @Override
@@ -144,9 +152,13 @@ public class MockDatabase implements Database {
 
       for(Pattern pattern : updateMocks.keySet()) {
         if(pattern.matcher(statement).matches()) {
+          LOGGER.log(Level.INFO, "Mocking update: '" + pattern + "' matched '" + statement + "'");
+
           return updateMocks.get(pattern).get();
         }
       }
+
+      LOGGER.log(Level.WARNING, "No mock defined for: '" + statement + "'");
 
       return 0;
     }
@@ -157,6 +169,8 @@ public class MockDatabase implements Database {
 
       for(Pattern pattern : queryMocks.keySet()) {
         if(pattern.matcher(statement).matches()) {
+          LOGGER.log(Level.INFO, "Mocking query: '" + pattern + "' matched '" + statement + "'");
+
           long rowsLeft = max;
 
           Iterator<Row> iterator = queryMocks.get(pattern).get().iterator();
@@ -173,6 +187,8 @@ public class MockDatabase implements Database {
           return rowsLeft > 0 ? false : iterator.hasNext();
         }
       }
+
+      LOGGER.log(Level.WARNING, "No mock defined for: '" + statement + "'");
 
       return false;
     }
