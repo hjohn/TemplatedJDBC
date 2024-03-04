@@ -15,7 +15,7 @@ import org.int4.db.core.fluent.StatementExecutor;
 public class CheckedTransaction extends BaseTransaction<SQLException> implements Processor<StatementExecutor<SQLException>, SQLException> {
   private final BiFunction<CheckedTransaction, SafeSQL, Context<SQLException>> contextFactory;
 
-  CheckedTransaction(Supplier<Connection> connectionSupplier, boolean readOnly, BiFunction<CheckedTransaction, SafeSQL, Context<SQLException>> contextFactory) {
+  public CheckedTransaction(Supplier<Connection> connectionSupplier, boolean readOnly, BiFunction<CheckedTransaction, SafeSQL, Context<SQLException>> contextFactory) {
     super(connectionSupplier, readOnly, (tx, msg, cause) -> new SQLException(tx + ": " + msg, cause));
 
     this.contextFactory = contextFactory;
