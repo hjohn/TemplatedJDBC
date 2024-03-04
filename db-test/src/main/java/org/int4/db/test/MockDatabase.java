@@ -1,7 +1,5 @@
 package org.int4.db.test;
 
-import java.lang.StringTemplate.Processor;
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.HashMap;
@@ -10,18 +8,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
-import org.int4.db.core.BaseTransaction;
+import org.int4.db.core.Database;
 import org.int4.db.core.DatabaseException;
-import org.int4.db.core.DatabaseFunctions;
 import org.int4.db.core.RetryStrategy;
 import org.int4.db.core.SafeSQL;
+import org.int4.db.core.Transaction;
 import org.int4.db.core.fluent.Context;
 import org.int4.db.core.fluent.Row;
 import org.int4.db.core.fluent.RowAccessException;
-import org.int4.db.core.fluent.StatementExecutor;
 import org.int4.db.core.util.JdbcFunction;
 import org.int4.db.core.util.JdbcIterator;
 import org.int4.db.core.util.ThrowingRunnable;
@@ -31,7 +27,7 @@ import org.int4.db.core.util.ThrowingSupplier;
  * A database which can return mocked responses when SQL statements match a
  * regular expression.
  */
-public class MockDatabase implements DatabaseFunctions<org.int4.db.test.MockDatabase.MockTransaction, DatabaseException> {
+public class MockDatabase implements Database {
   private final Map<Pattern, ThrowingSupplier<List<Row>, DatabaseException>> queryMocks = new HashMap<>();
   private final Map<Pattern, ThrowingSupplier<Long, DatabaseException>> updateMocks = new HashMap<>();
   private final Map<Pattern, ThrowingRunnable<DatabaseException>> executeMocks = new HashMap<>();
@@ -104,8 +100,8 @@ public class MockDatabase implements DatabaseFunctions<org.int4.db.test.MockData
   }
 
   @Override
-  public MockTransaction beginTransaction(boolean readOnly) throws DatabaseException {
-    return new MockTransaction(() -> null, readOnly);
+  public Transaction beginTransaction(boolean readOnly) throws DatabaseException {
+    return new Transaction(() -> null, readOnly, (tx, sql) -> new MockContext(sql));
   }
 
   @Override
@@ -123,68 +119,62 @@ public class MockDatabase implements DatabaseFunctions<org.int4.db.test.MockData
     return DatabaseException.class;
   }
 
-  class MockTransaction extends BaseTransaction<DatabaseException> implements Processor<StatementExecutor<DatabaseException>, DatabaseException>  {
+  private class MockContext implements Context<DatabaseException> {
+    private final SafeSQL sql;
 
-    MockTransaction(Supplier<Connection> connectionProvider, boolean readOnly) {
-      super(connectionProvider, readOnly, (tx, msg, cause) -> new DatabaseException(tx + ": " + msg, cause));
+    MockContext(SafeSQL sql) {
+      this.sql = sql;
     }
 
     @Override
-    public StatementExecutor<DatabaseException> process(StringTemplate stringTemplate) throws DatabaseException {
-      SafeSQL sql = new SafeSQL(stringTemplate);
+    public void execute() throws DatabaseException {
+      String statement = sql.getSQL();
 
-      return new StatementExecutor<>(new Context<>() {
-
-        @Override
-        public void execute() throws DatabaseException {
-          String statement = sql.getSQL();
-
-          for(Pattern pattern : executeMocks.keySet()) {
-            if(pattern.matcher(statement).matches()) {
-              executeMocks.get(pattern).run();
-            }
-          }
+      for(Pattern pattern : executeMocks.keySet()) {
+        if(pattern.matcher(statement).matches()) {
+          executeMocks.get(pattern).run();
+          break;
         }
+      }
+    }
 
-        @Override
-        public long executeUpdate() throws DatabaseException {
-          String statement = sql.getSQL();
+    @Override
+    public long executeUpdate() throws DatabaseException {
+      String statement = sql.getSQL();
 
-          for(Pattern pattern : updateMocks.keySet()) {
-            if(pattern.matcher(statement).matches()) {
-              return updateMocks.get(pattern).get();
-            }
-          }
-
-          return 0;
+      for(Pattern pattern : updateMocks.keySet()) {
+        if(pattern.matcher(statement).matches()) {
+          return updateMocks.get(pattern).get();
         }
+      }
 
-        @Override
-        public boolean consume(Consumer<Row> consumer, long max, JdbcFunction<PreparedStatement, JdbcIterator<Row>> resultSetExtractor) throws DatabaseException {
-          String statement = sql.getSQL();
+      return 0;
+    }
 
-          for(Pattern pattern : queryMocks.keySet()) {
-            if(pattern.matcher(statement).matches()) {
-              long rowsLeft = max;
+    @Override
+    public boolean consume(Consumer<Row> consumer, long max, JdbcFunction<PreparedStatement, JdbcIterator<Row>> resultSetExtractor) throws DatabaseException {
+      String statement = sql.getSQL();
 
-              Iterator<Row> iterator = queryMocks.get(pattern).get().iterator();
+      for(Pattern pattern : queryMocks.keySet()) {
+        if(pattern.matcher(statement).matches()) {
+          long rowsLeft = max;
 
-              while(iterator.hasNext() && rowsLeft-- > 0) {
-                try {
-                  consumer.accept(iterator.next());
-                }
-                catch(RowAccessException e) {
-                  throw new DatabaseException("execution failed for: " + statement, e.unwrap());
-                }
-              }
+          Iterator<Row> iterator = queryMocks.get(pattern).get().iterator();
 
-              return rowsLeft > 0 ? false : iterator.hasNext();
+          while(iterator.hasNext() && rowsLeft-- > 0) {
+            try {
+              consumer.accept(iterator.next());
+            }
+            catch(RowAccessException e) {
+              throw new DatabaseException("execution failed for: " + statement, e.unwrap());
             }
           }
 
-          return false;
+          return rowsLeft > 0 ? false : iterator.hasNext();
         }
-      });
+      }
+
+      return false;
     }
   }
 }
