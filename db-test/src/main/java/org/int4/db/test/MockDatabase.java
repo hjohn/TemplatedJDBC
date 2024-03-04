@@ -133,7 +133,7 @@ public class MockDatabase implements DatabaseFunctions<org.int4.db.test.MockData
     public StatementExecutor<DatabaseException> process(StringTemplate stringTemplate) throws DatabaseException {
       SafeSQL sql = new SafeSQL(stringTemplate);
 
-      return new StatementExecutor<>(new Context<>(null, null) {
+      return new StatementExecutor<>(new Context<>() {
 
         @Override
         public void execute() throws DatabaseException {

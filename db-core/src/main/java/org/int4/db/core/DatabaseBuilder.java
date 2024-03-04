@@ -1,11 +1,10 @@
 package org.int4.db.core;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Objects;
 import java.util.function.Supplier;
-
-import org.int4.db.core.CheckedTransaction.SQLExceptionWrapper;
 
 /**
  * Builder for {@link Database} and {@link CheckedDatabase} instances.
@@ -77,9 +76,13 @@ public class DatabaseBuilder {
       this.retryStrategy = retryStrategy;
     }
 
+    @SuppressWarnings("resource")
     @Override
     public Transaction beginTransaction(boolean readOnly) {
-      return new Transaction(connectionSupplier, readOnly);
+      return new Transaction(connectionSupplier, readOnly, (tx, sql) -> new DefaultContext<>(
+        () -> createPreparedStatement(tx, sql),
+        (message, cause) -> new DatabaseException(this + ": " + message, cause)
+      ));
     }
 
     @Override
@@ -96,6 +99,16 @@ public class DatabaseBuilder {
     public Class<DatabaseException> exceptionType() {
       return DatabaseException.class;
     }
+
+    @SuppressWarnings("resource")
+    private static PreparedStatement createPreparedStatement(BaseTransaction<DatabaseException> tx, SafeSQL sql) {
+      try {
+        return sql.toPreparedStatement(tx.getConnection());
+      }
+      catch(SQLException e) {
+        throw new DatabaseException(tx + ": creating statement failed for: " + sql, e);
+      }
+    }
   }
 
   private static class DefaultCheckedDatabase implements CheckedDatabase {
@@ -107,9 +120,13 @@ public class DatabaseBuilder {
       this.retryStrategy = retryStrategy;
     }
 
+    @SuppressWarnings("resource")
     @Override
     public CheckedTransaction beginTransaction(boolean readOnly) {
-      return new CheckedTransaction(connectionSupplier, readOnly);
+      return new CheckedTransaction(connectionSupplier, readOnly, (tx, sql) -> new DefaultContext<>(
+        () -> createPreparedStatement(tx, sql),
+        (message, cause) -> new SQLExceptionWrapper(tx + ": " + message, cause)
+      ));
     }
 
     @Override
@@ -125,6 +142,26 @@ public class DatabaseBuilder {
     @Override
     public Class<SQLException> exceptionType() {
       return SQLException.class;
+    }
+
+    @SuppressWarnings("resource")
+    private static PreparedStatement createPreparedStatement(BaseTransaction<SQLException> tx, SafeSQL sql) throws SQLException {
+      try {
+        return sql.toPreparedStatement(tx.getConnection());
+      }
+      catch(SQLException e) {
+        throw new SQLExceptionWrapper(tx + ": creating statement failed for: " + sql, e);
+      }
+    }
+
+    private static class SQLExceptionWrapper extends SQLException {
+      SQLExceptionWrapper(String message, SQLException cause) {
+        super(message, cause);
+      }
+
+      SQLException getSQLException() {
+        return (SQLException)getCause();
+      }
     }
   }
 }
