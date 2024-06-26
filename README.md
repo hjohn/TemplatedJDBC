@@ -275,17 +275,22 @@ tx."UPDATE employee SET \{EXCEPT_ID.entries(updatedEmployee)} WHERE id = 5".exec
 
 ## Nested Records
 
-`Reflector`s support nested records and will flatten such records to a single set of fields. Given:
+`Reflector`s support nested records amd cam flatten such records to a single set of fields. Given:
 
 ```java
 record Company(Integer id, String name, Address address) {}
 record Address(String street, String city) {}
 ```
-A `Reflector` created for `Company` will have the fields "id", "name", "street" and "city". A query that joins an address can then be directly mapped to a `Company` record:
+A `Reflector` can be created for `Company` which inlines the fields of `Address`:
 
 ```java
-Reflector<Company> COMPANY = Reflector.of(Company.class);
+Reflector<Company> COMPANY = Reflector.of(Company.class)
+    .inline("address", Reflector.of(Address.class));
+```
 
+The fields will be: `id`, `name`, `address_street` and `address_city`
+
+```java
 Company c = tx."SELECT \{COMPANY} FROM company c JOIN address a WHERE a.id = c.id"
     .map(COMPANY)
     .get();

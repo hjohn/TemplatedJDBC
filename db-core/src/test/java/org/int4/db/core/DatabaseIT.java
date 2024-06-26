@@ -123,7 +123,9 @@ public class DatabaseIT {
   @Nested
   class WhenEmployeeTableCreated {
     private static final Reflector<Employee> ALL = Reflector.of(LOOKUP, Employee.class);
-    private static final Reflector<Composite> COMPOSITE = Reflector.of(LOOKUP, Composite.class);
+    private static final Reflector<Composite> COMPOSITE = Reflector.of(LOOKUP, Composite.class)
+      .inline("other_data", Reflector.of(LOOKUP, OtherData.class))
+      .withNames("id", "name", "age", "data");
     private static final Extractor<Employee> EXCEPT_ID = ALL.excluding("id");
 
     @BeforeEach
