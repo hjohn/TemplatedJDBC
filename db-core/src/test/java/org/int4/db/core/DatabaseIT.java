@@ -1,10 +1,7 @@
 package org.int4.db.core;
 
-import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -12,56 +9,41 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
+import javax.sql.DataSource;
+
 import org.int4.db.core.fluent.Extractor;
 import org.int4.db.core.fluent.Reflector;
 import org.int4.db.core.fluent.Row;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.zonky.test.db.postgres.embedded.EmbeddedPostgres;
+import io.zonky.test.db.postgres.junit5.EmbeddedPostgresExtension;
+import io.zonky.test.db.postgres.junit5.PreparedDbExtension;
 
 public class DatabaseIT {
+  @RegisterExtension
+  private static final PreparedDbExtension POSTGRES = EmbeddedPostgresExtension.preparedDatabase(ds -> {});
   private static final Lookup LOOKUP = MethodHandles.lookup();
-
-  private static EmbeddedPostgres postgres;
 
   private Database database;
 
-  @BeforeAll
-  static void beforeAll() throws IOException {
-    postgres = EmbeddedPostgres.builder().start();
-  }
-
   @BeforeEach
   void beforeEach() throws SQLException {
-    try(Connection c = postgres.getPostgresDatabase().getConnection()) {
-      try(PreparedStatement ps = c.prepareStatement("DROP DATABASE IF EXISTS test")) {
-        ps.execute();
-      }
-      try(PreparedStatement ps = c.prepareStatement("CREATE DATABASE test")) {
-        ps.execute();
-      }
-    }
+    DataSource dataSource = POSTGRES.getDbProvider().createDataSource();
 
     database = DatabaseBuilder.using(() -> {
       try {
-        return postgres.getDatabase("postgres", "test").getConnection();
+        return dataSource.getConnection();
       }
       catch(SQLException e) {
         throw new IllegalStateException(e);
       }
     }).build();
-  }
-
-  @AfterAll
-  static void afterAll() throws IOException {
-    postgres.close();
   }
 
   @Nested
