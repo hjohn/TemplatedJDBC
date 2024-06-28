@@ -53,7 +53,7 @@ public class MockCheckedDatabase extends AbstractMockDatabase<SQLException> impl
 
     @Override
     public StatementExecutor<SQLException> process(StringTemplate stringTemplate) {
-      return new StatementExecutor<>(createContext(new SafeSQL(stringTemplate)));
+      return new StatementExecutor<>(createContext(new SafeSQL(stringTemplate, Map.of())));
     }
   }
 }

@@ -54,7 +54,7 @@ public class MockDatabase extends AbstractMockDatabase<DatabaseException> implem
 
     @Override
     public StatementExecutor<DatabaseException> process(StringTemplate stringTemplate) throws DatabaseException {
-      return new StatementExecutor<>(createContext(new SafeSQL(stringTemplate)));
+      return new StatementExecutor<>(createContext(new SafeSQL(stringTemplate, Map.of())));
     }
   }
 }

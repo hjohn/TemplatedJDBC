@@ -2,13 +2,14 @@ package org.int4.db.core.internal;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.time.Instant;
+import java.util.Map;
 
+import org.int4.db.core.api.TypeConverter;
 import org.int4.db.core.fluent.Row;
 import org.int4.db.core.fluent.RowAccessException;
 
 class DynamicRow implements Row {
+  private final Map<Class<?>, TypeConverter<?, ?>> typeConverters;
   private final ResultSet rs;
 
   /*
@@ -21,7 +22,8 @@ class DynamicRow implements Row {
    * other cases, a static row is returned which can't throw any exceptions.
    */
 
-  DynamicRow(ResultSet rs) {
+  DynamicRow(Map<Class<?>, TypeConverter<?, ?>> typeConverters, ResultSet rs) {
+    this.typeConverters = typeConverters;
     this.rs = rs;
   }
 
@@ -48,8 +50,25 @@ class DynamicRow implements Row {
   @Override
   public <T> T getObject(int columnIndex, Class<T> type) {
     try {
-      if(type == Instant.class) {
-        return type.cast(rs.getObject(columnIndex + 1, Timestamp.class).toInstant());
+      @SuppressWarnings("unchecked")
+      TypeConverter<T, Object> converter = (TypeConverter<T, Object>)typeConverters.get(type);
+
+      if(converter != null) {
+        Object object = rs.getObject(columnIndex + 1, converter.encodedClass());
+
+        return object == null ? null : converter.decode(object);
+      }
+
+      if(type.isEnum()) {  // Handle enums after converter so converters can overrule handling for a specific enum
+        String name = rs.getString(columnIndex + 1);
+
+        if(name == null) {
+          return null;
+        }
+
+        Enum<?> enumValue = Enum.valueOf(type.asSubclass(Enum.class), name);
+
+        return type.cast(enumValue);
       }
 
       return type.cast(rs.getObject(columnIndex + 1, type));

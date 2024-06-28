@@ -3,22 +3,21 @@ package org.int4.db.core.internal;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.RecordComponent;
 import java.sql.Connection;
-import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Timestamp;
 import java.sql.Types;
-import java.time.Instant;
-import java.time.LocalDate;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.int4.db.core.api.TypeConverter;
 import org.int4.db.core.fluent.Extractor;
 import org.int4.db.core.fluent.FieldValueSetParameter.Entries;
 import org.int4.db.core.fluent.FieldValueSetParameter.Values;
@@ -38,15 +37,18 @@ public class SafeSQL {
 
   private final String sql;
   private final List<Object> values;
+  private final Map<Class<?>, TypeConverter<?, ?>> typeConverters;
 
   /**
    * Constructs a new instance.
    *
    * @param template a {@link StringTemplate}, cannot be {@code null}
+   * @param typeConverters a map of {@link TtypeConverter}s, cannot be {@code null}
    * @throws NullPointerException when any argument is {@code null}
    */
-  public SafeSQL(StringTemplate template) {
+  public SafeSQL(StringTemplate template, Map<Class<?>, TypeConverter<?, ?>> typeConverters) {
     this.values = template.values();
+    this.typeConverters = Map.copyOf(Objects.requireNonNull(typeConverters, "typeConverters"));
     this.sql = createSQL(template);
   }
 
@@ -116,7 +118,7 @@ public class SafeSQL {
     try {
       return new Iterator<>() {
         final ResultSet rs = resultSetSupplier.get();
-        final DynamicRow row = new DynamicRow(rs);
+        final DynamicRow row = new DynamicRow(typeConverters, rs);
 
         @Override
         public boolean hasNext() {
@@ -139,7 +141,7 @@ public class SafeSQL {
     }
   }
 
-  private static String createSQL(StringTemplate template) {
+  private String createSQL(StringTemplate template) {
     StringBuilder sb = new StringBuilder();
     List<String> fragments = template.fragments();
     List<Object> values = template.values();
@@ -150,7 +152,17 @@ public class SafeSQL {
 
       sb.append(fragment);
 
-      if(value instanceof Extractor<?> r) {
+      appendTemplateValue(sb, value, fragment);
+    }
+
+    sb.append(fragments.getLast());
+
+    return sb.toString();
+  }
+
+  private void appendTemplateValue(StringBuilder sb, Object value, String fragment) {
+    switch(value) {
+      case Extractor<?> r -> {
         Matcher matcher = ALIAS.matcher(fragment);
         String alias = matcher.matches() ? matcher.group(2) + "." : "";
 
@@ -160,37 +172,31 @@ public class SafeSQL {
 
         sb.append(r.names().stream().filter(NOT_EMPTY).map(n -> alias + n).collect(Collectors.joining(", ")));
       }
-      else if(value instanceof Entries e) {
-        sb.append(e.names().stream().filter(NOT_EMPTY).map(t -> t + " = ?").collect(Collectors.joining(", ")));
-      }
-      else if(value instanceof Values v) {
-        sb.append(v.names().stream().filter(NOT_EMPTY).map(t -> "?").collect(Collectors.joining(", ")));
-      }
-      else if(value instanceof Identifier id) {
-        sb.append(id.getIdentifier());
-      }
-      else if(value instanceof Record r) {
-        RecordComponent[] recordComponents = r.getClass().getRecordComponents();
+      case Entries e -> sb.append(e.names().stream().filter(NOT_EMPTY).map(t -> t + " = ?").collect(Collectors.joining(", ")));
+      case Values v -> sb.append(v.names().stream().filter(NOT_EMPTY).map(t -> "?").collect(Collectors.joining(", ")));
+      case Identifier i -> sb.append(i.getIdentifier());
+      default -> {
+        TypeConverter<?, ?> converter = typeConverters.get(value.getClass());
 
-        for (int j = 0; j < recordComponents.length; j++) {
-          if (j != 0) {
-            sb.append(",");
+        switch(value) {
+          case Record r when converter == null -> {
+            RecordComponent[] recordComponents = r.getClass().getRecordComponents();
+
+            for (int j = 0; j < recordComponents.length; j++) {
+              if (j != 0) {
+                sb.append(", ");
+              }
+
+              sb.append("?");
+            }
           }
-
-          sb.append("?");
+          default -> sb.append("?");
         }
       }
-      else {
-        sb.append("?");
-      }
     }
-
-    sb.append(fragments.getLast());
-
-    return sb.toString();
   }
 
-  private static void fillParameters(PreparedStatement ps, List<Object> values) throws SQLException {
+  private void fillParameters(PreparedStatement ps, List<Object> values) throws SQLException {
     int index = 1;
 
     for(Object value : values) {
@@ -198,10 +204,11 @@ public class SafeSQL {
     }
   }
 
-  private static int fillParameter(int startIndex, PreparedStatement ps, Object value) throws SQLException {
+  private int fillParameter(int startIndex, PreparedStatement ps, Object value) throws SQLException {
     int index = startIndex;
 
     switch(value) {
+      case null -> ps.setNull(index++, Types.NULL);
       case Entries e -> {
         for(int i = 0, max = e.size(); i < max; i++) {
           String name = e.getName(i);
@@ -222,22 +229,28 @@ public class SafeSQL {
       }
       case Extractor<?> r -> {}
       case Identifier i -> {}
-      case Record data -> {
-        for(RecordComponent recordComponent : data.getClass().getRecordComponents()) {
-          try {
-            index = fillParameter(index, ps, recordComponent.getAccessor().invoke(data));
+      default -> {
+        @SuppressWarnings("unchecked")
+        TypeConverter<Object, Object> converter = (TypeConverter<Object, Object>) typeConverters.get(value.getClass());
+
+        switch(value) {
+          case Object o when converter != null -> ps.setObject(index++, converter.encode(value));
+          case Enum<?> e -> ps.setString(index++, e.name());
+          case Record data -> {
+            for(RecordComponent recordComponent : data.getClass().getRecordComponents()) {
+              try {
+                index = fillParameter(index, ps, recordComponent.getAccessor().invoke(data));
+              }
+              catch(IllegalAccessException | InvocationTargetException ex) {
+                throw new IllegalStateException(ex);
+              }
+            }
           }
-          catch(IllegalAccessException | InvocationTargetException ex) {
-            throw new IllegalStateException(ex);
+          default -> {
+            ps.setObject(index++, value);
           }
         }
       }
-      case Enum<?> e -> ps.setString(index++, e.name());
-      case Instant i -> ps.setObject(index++, Timestamp.from(i));
-      case LocalDate ld -> ps.setObject(index++, Date.valueOf(ld));
-      case Object o -> ps.setObject(index++, o);
-      case null -> ps.setNull(index++, Types.NULL);
-//      default -> throw new UnsupportedOperationException("unknown type for value: " + value + " at index " + index + "; type: " + value.getClass());
     }
 
     return index;

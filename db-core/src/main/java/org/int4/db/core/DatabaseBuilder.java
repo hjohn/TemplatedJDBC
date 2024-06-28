@@ -1,7 +1,14 @@
 package org.int4.db.core;
 
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
 
@@ -11,6 +18,7 @@ import org.int4.db.core.api.Database;
 import org.int4.db.core.api.DatabaseException;
 import org.int4.db.core.api.RetryStrategy;
 import org.int4.db.core.api.Transaction;
+import org.int4.db.core.api.TypeConverter;
 import org.int4.db.core.fluent.StatementExecutor;
 import org.int4.db.core.internal.BaseTransaction;
 import org.int4.db.core.internal.SQLStatement;
@@ -20,6 +28,11 @@ import org.int4.db.core.internal.SafeSQL;
  * Builder for {@link Database} and {@link CheckedDatabase} instances.
  */
 public class DatabaseBuilder {
+  private static final Map<Class<?>, TypeConverter<?, ?>> STANDARD_TYPE_CONVERTERS = Map.of(
+    Instant.class, TypeConverter.of(Timestamp.class, Timestamp::from, Timestamp::toInstant),
+    LocalDateTime.class, TypeConverter.of(Timestamp.class, Timestamp::valueOf, Timestamp::toLocalDateTime),
+    LocalDate.class, TypeConverter.of(Date.class, Date::valueOf, Date::toLocalDate)
+  );
 
   /**
    * Creates a new builder given a connection supplier.
@@ -33,6 +46,7 @@ public class DatabaseBuilder {
   }
 
   private final Supplier<Connection> connectionSupplier;
+  private final Map<Class<?>, TypeConverter<?, ?>> typeConverters = new HashMap<>(STANDARD_TYPE_CONVERTERS);
 
   private RetryStrategy retryStrategy = RetryStrategy.NONE;
 
@@ -54,6 +68,29 @@ public class DatabaseBuilder {
   }
 
   /**
+   * Adds a {@link TypeConverter} to this builder, replacing any existing converter.
+   * Adding {@code null} will remove a previously added converter or a standard converter.
+   *
+   * @param <V> the Java type the converter supports
+   * @param cls the Java type, cannot be {@code null}
+   * @param typeConverter a {@link TypeConverter}, can be {@code null}
+   * @return this
+   * @throws NullPointerException when the given class is {@code null}
+   */
+  public <V> DatabaseBuilder addTypeConverter(Class<V> cls, TypeConverter<V, ?> typeConverter) {
+    Objects.requireNonNull(cls, "cls");
+
+    if(typeConverter == null) {
+      typeConverters.remove(cls);
+    }
+    else {
+      typeConverters.put(cls, typeConverter);
+    }
+
+    return this;
+  }
+
+  /**
    * Builds a {@link Database} instance using this builder's configuration.
    *
    * <p>All operations on this instance will throw the unchecked
@@ -62,7 +99,7 @@ public class DatabaseBuilder {
    * @return a {@link Database} instance, never {@code null}
    */
   public Database build() {
-    return new DefaultDatabase(connectionSupplier, retryStrategy);
+    return new DefaultDatabase(connectionSupplier, retryStrategy, typeConverters);
   }
 
   /**
@@ -74,16 +111,18 @@ public class DatabaseBuilder {
    * @return a {@link CheckedDatabase} instance, never {@code null}
    */
   public CheckedDatabase throwingSQLExceptions() {
-    return new DefaultCheckedDatabase(connectionSupplier, retryStrategy);
+    return new DefaultCheckedDatabase(connectionSupplier, retryStrategy, typeConverters);
   }
 
   private static class DefaultDatabase implements Database {
     private final Supplier<Connection> connectionSupplier;
     private final RetryStrategy retryStrategy;
+    private final Map<Class<?>, TypeConverter<?, ?>> typeConverters;
 
-    DefaultDatabase(Supplier<Connection> connectionSupplier, RetryStrategy retryStrategy) {
+    DefaultDatabase(Supplier<Connection> connectionSupplier, RetryStrategy retryStrategy, Map<Class<?>, TypeConverter<?, ?>> typeConverters) {
       this.connectionSupplier = connectionSupplier;
       this.retryStrategy = retryStrategy;
+      this.typeConverters = Map.copyOf(typeConverters);
     }
 
     @Override
@@ -114,7 +153,7 @@ public class DatabaseBuilder {
 
       @Override
       public StatementExecutor<DatabaseException> process(StringTemplate stringTemplate) throws DatabaseException {
-        SafeSQL sql = new SafeSQL(stringTemplate);
+        SafeSQL sql = new SafeSQL(stringTemplate, typeConverters);
 
         return new StatementExecutor<>(new DefaultContext<>(
             () -> createSQLStatement(this, sql),
@@ -137,10 +176,12 @@ public class DatabaseBuilder {
   private static class DefaultCheckedDatabase implements CheckedDatabase {
     private final Supplier<Connection> connectionSupplier;
     private final RetryStrategy retryStrategy;
+    private final Map<Class<?>, TypeConverter<?, ?>> typeConverters;
 
-    DefaultCheckedDatabase(Supplier<Connection> connectionSupplier, RetryStrategy retryStrategy) {
+    DefaultCheckedDatabase(Supplier<Connection> connectionSupplier, RetryStrategy retryStrategy, Map<Class<?>, TypeConverter<?, ?>> typeConverters) {
       this.connectionSupplier = connectionSupplier;
       this.retryStrategy = retryStrategy;
+      this.typeConverters = Map.copyOf(typeConverters);
     }
 
     @Override
@@ -181,7 +222,7 @@ public class DatabaseBuilder {
 
       @Override
       public StatementExecutor<SQLException> process(StringTemplate stringTemplate) throws DatabaseException {
-        SafeSQL sql = new SafeSQL(stringTemplate);
+        SafeSQL sql = new SafeSQL(stringTemplate, typeConverters);
 
         return new StatementExecutor<>(new DefaultContext<>(
             () -> createSQLStatement(sql),

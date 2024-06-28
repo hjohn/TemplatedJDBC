@@ -8,7 +8,9 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.LocalDate;
+import java.util.Map;
 
+import org.int4.db.core.api.TypeConverter;
 import org.int4.db.core.fluent.Extractor;
 import org.int4.db.core.fluent.Identifier;
 import org.int4.db.core.fluent.Reflector;
@@ -29,6 +31,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class SafeSQLTest {
   private static final Lookup LOOKUP = MethodHandles.lookup();
+  private static final Map<Class<?>, TypeConverter<?, ?>> TYPE_CONVERTERS = Map.of(LocalDate.class, TypeConverter.of(Date.class, Date::valueOf, Date::toLocalDate));
 
   @Captor
   private ArgumentCaptor<String> sqlCaptor;
@@ -47,7 +50,7 @@ public class SafeSQLTest {
       SELECT * FROM \{Identifier.of("employees")} WHERE overtime = \{overtime} AND \{nameOnly.entries(employee)}
     """;
 
-    SafeSQL sql = new SafeSQL(template);
+    SafeSQL sql = new SafeSQL(template, TYPE_CONVERTERS);
 
     when(connection.prepareStatement(sqlCaptor.capture(), eq(Statement.RETURN_GENERATED_KEYS))).thenReturn(preparedStatement);
 
@@ -55,7 +58,7 @@ public class SafeSQLTest {
 
     assertThat(sqlCaptor.getValue()).isEqualTo("""
       INSERT INTO employees (name) VALUES (?);
-      INSERT INTO employees (name, birth_date, salary, overtime, gender) VALUES (?,?,?,?,?);
+      INSERT INTO employees (name, birth_date, salary, overtime, gender) VALUES (?, ?, ?, ?, ?);
       SELECT * FROM employees WHERE overtime = ? AND name = ?
     """);
 
@@ -68,9 +71,9 @@ public class SafeSQLTest {
     verify(preparedStatement).setObject(7, false);
     verify(preparedStatement).setObject(8, "John");
 
-    assertThat(sql.toString()).isEqualTo("""
+    assertThat(statement.toString()).isEqualTo("""
       INSERT INTO employees (name) VALUES (?);
-      INSERT INTO employees (name, birth_date, salary, overtime, gender) VALUES (?,?,?,?,?);
+      INSERT INTO employees (name, birth_date, salary, overtime, gender) VALUES (?, ?, ?, ?, ?);
       SELECT * FROM employees WHERE overtime = ? AND name = ?
     """);
   }
@@ -79,7 +82,7 @@ public class SafeSQLTest {
   @Test
   void shouldCreatePreparedStatementWithAlias(@Mock Connection connection, @Mock PreparedStatement preparedStatement) throws SQLException {
     Reflector<Employee> all = Reflector.of(LOOKUP, Employee.class);
-    SafeSQL sql = new SafeSQL(RAW."SELECT e.\{all} FROM employee e");
+    SafeSQL sql = new SafeSQL(RAW."SELECT e.\{all} FROM employee e", TYPE_CONVERTERS);
 
     when(connection.prepareStatement(sqlCaptor.capture(), eq(Statement.RETURN_GENERATED_KEYS))).thenReturn(preparedStatement);
 
@@ -88,6 +91,8 @@ public class SafeSQLTest {
     assertThat(sqlCaptor.getValue()).isEqualTo("SELECT e.name, e.birth_date, e.salary, e.overtime, e.gender FROM employee e");
 
     verifyNoMoreInteractions(preparedStatement);
+
+    assertThat(statement.toString()).isEqualTo("SELECT e.name, e.birth_date, e.salary, e.overtime, e.gender FROM employee e");
   }
 
   enum Gender {M, F}
