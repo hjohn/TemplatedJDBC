@@ -1,10 +1,15 @@
 package org.int4.db.test;
 
 import java.sql.SQLException;
+import java.util.Map;
+import java.util.function.Consumer;
 
-import org.int4.db.core.Database;
-import org.int4.db.core.DatabaseException;
-import org.int4.db.core.Transaction;
+import org.int4.db.core.api.Database;
+import org.int4.db.core.api.DatabaseException;
+import org.int4.db.core.api.Transaction;
+import org.int4.db.core.api.TransactionResult;
+import org.int4.db.core.fluent.StatementExecutor;
+import org.int4.db.core.internal.SafeSQL;
 
 /**
  * A database which can return mocked responses when SQL statements match a
@@ -14,7 +19,7 @@ public class MockDatabase extends AbstractMockDatabase<DatabaseException> implem
 
   @Override
   public Transaction beginTransaction(boolean readOnly) throws DatabaseException {
-    return new Transaction(() -> null, readOnly, (tx, sql) -> new MockContext(sql));
+    return new InternalTransaction();
   }
 
   @Override
@@ -25,5 +30,31 @@ public class MockDatabase extends AbstractMockDatabase<DatabaseException> implem
   @Override
   public Class<DatabaseException> exceptionType() {
     return DatabaseException.class;
+  }
+
+  class InternalTransaction implements Transaction {
+
+    @Override
+    public void commit() throws DatabaseException {
+    }
+
+    @Override
+    public void rollback() throws DatabaseException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void addCompletionHook(Consumer<TransactionResult> consumer) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void close() throws DatabaseException {
+    }
+
+    @Override
+    public StatementExecutor<DatabaseException> process(StringTemplate stringTemplate) throws DatabaseException {
+      return new StatementExecutor<>(createContext(new SafeSQL(stringTemplate)));
+    }
   }
 }

@@ -1,4 +1,4 @@
-package org.int4.db.core;
+package org.int4.db.core.internal;
 
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+
+import org.int4.db.core.api.TransactionResult;
 
 public abstract class BaseTransaction<X extends Exception> implements AutoCloseable {
   private static final Logger LOGGER = System.getLogger(BaseTransaction.class.getName());
@@ -50,7 +52,7 @@ public abstract class BaseTransaction<X extends Exception> implements AutoClosea
     LOGGER.log(Level.TRACE, "New Transaction " + this);
   }
 
-  final Connection getConnection() throws X {
+  public final Connection getConnection() throws X {
     ensureNotFinished();
 
     return getConnectionInternal();

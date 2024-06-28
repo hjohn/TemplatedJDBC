@@ -11,6 +11,9 @@ import java.util.Objects;
 
 import javax.sql.DataSource;
 
+import org.int4.db.core.api.Database;
+import org.int4.db.core.api.DatabaseException;
+import org.int4.db.core.api.Transaction;
 import org.int4.db.core.fluent.Extractor;
 import org.int4.db.core.fluent.Reflector;
 import org.int4.db.core.fluent.Row;
@@ -74,8 +77,8 @@ public class DatabaseIT {
       @BeforeEach
       void beforeEach() {
         database.accept(tx -> {
-          assertThat(tx."INSERT INTO company (\{ALL}) VALUES (\{company1})".executeUpdate()).isEqualTo(1);
-          assertThat(tx."INSERT INTO company (\{ALL}) VALUES (\{company2})".executeUpdate()).isEqualTo(1);
+          assertThat(tx."INSERT INTO company (\{ALL}) VALUES (\{ALL.values(company1)})".executeUpdate()).isEqualTo(1);
+          assertThat(tx."INSERT INTO company (\{ALL}) VALUES (\{ALL.values(company2)})".executeUpdate()).isEqualTo(1);
         });
       }
 

@@ -1,4 +1,4 @@
-package org.int4.db.core;
+package org.int4.db.core.internal;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.RecordComponent;
@@ -64,7 +64,7 @@ public class SafeSQL {
     return sql;
   }
 
-  SQLStatement toSQLStatement(Connection connection) throws SQLException {
+  public SQLStatement toSQLStatement(Connection connection) throws SQLException {
     return new SQLStatement() {
       final PreparedStatement ps;
 

@@ -1,10 +1,10 @@
-package org.int4.db.core;
+package org.int4.db.core.internal;
 
 import java.sql.SQLException;
 
 import org.int4.db.core.fluent.SQLResult;
 
-interface SQLStatement extends AutoCloseable {
+public interface SQLStatement extends AutoCloseable {
   SQLResult execute() throws SQLException;
 
   @Override

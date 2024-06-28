@@ -11,13 +11,13 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
-import org.int4.db.core.DatabaseException;
-import org.int4.db.core.RetryStrategy;
-import org.int4.db.core.SafeSQL;
+import org.int4.db.core.api.DatabaseException;
+import org.int4.db.core.api.RetryStrategy;
 import org.int4.db.core.fluent.Context;
 import org.int4.db.core.fluent.Row;
 import org.int4.db.core.fluent.RowAccessException;
 import org.int4.db.core.fluent.SQLResult;
+import org.int4.db.core.internal.SafeSQL;
 import org.int4.db.core.util.ThrowingRunnable;
 import org.int4.db.core.util.ThrowingSupplier;
 
@@ -97,6 +97,10 @@ abstract class AbstractMockDatabase<X extends Exception> {
 
   public RetryStrategy retryStrategy() {
     return RetryStrategy.NONE;
+  }
+
+  MockContext createContext(SafeSQL sql) {
+    return new MockContext(sql);
   }
 
   class MockContext implements Context<X> {

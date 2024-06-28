@@ -4,7 +4,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.int4.db.core.DatabaseException;
+import org.int4.db.core.api.DatabaseException;
 import org.int4.db.core.fluent.Row;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

@@ -1,4 +1,4 @@
-package org.int4.db.core;
+package org.int4.db.core.api;
 
 import java.sql.SQLException;
 import java.util.Objects;
@@ -6,11 +6,10 @@ import java.util.Objects;
 import org.int4.db.core.util.ThrowingConsumer;
 import org.int4.db.core.util.ThrowingFunction;
 
-public interface DatabaseFunctions<T extends BaseTransaction<X>, X extends Exception> {
+public interface DatabaseFunctions<T extends TransactionFunctions<X>, X extends Exception> {
 
   /**
-   * Starts a read/write transaction which throws the unchecked
-   * {@link DatabaseException} if a database error occurs.
+   * Starts a read/write transaction.
    *
    * @return a new {@link Transaction}, never {@code null}
    * @throws X when a database exception occurs
@@ -20,8 +19,7 @@ public interface DatabaseFunctions<T extends BaseTransaction<X>, X extends Excep
   }
 
   /**
-   * Starts a read only transaction which throws the unchecked
-   * {@link DatabaseException} if a database error occurs.
+   * Starts a read only transaction.
    *
    * @return a new {@link Transaction}, never {@code null}
    * @throws X when a database exception occurs

@@ -1,4 +1,4 @@
-package org.int4.db.core;
+package org.int4.db.core.api;
 
 /**
  * Represents a database on which transactions can be started.

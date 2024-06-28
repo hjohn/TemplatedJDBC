@@ -1,10 +1,20 @@
 package org.int4.db.core;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Objects;
 import java.util.function.Supplier;
+
+import org.int4.db.core.api.CheckedDatabase;
+import org.int4.db.core.api.CheckedTransaction;
+import org.int4.db.core.api.Database;
+import org.int4.db.core.api.DatabaseException;
+import org.int4.db.core.api.RetryStrategy;
+import org.int4.db.core.api.Transaction;
+import org.int4.db.core.fluent.StatementExecutor;
+import org.int4.db.core.internal.BaseTransaction;
+import org.int4.db.core.internal.SQLStatement;
+import org.int4.db.core.internal.SafeSQL;
 
 /**
  * Builder for {@link Database} and {@link CheckedDatabase} instances.
@@ -76,13 +86,9 @@ public class DatabaseBuilder {
       this.retryStrategy = retryStrategy;
     }
 
-    @SuppressWarnings("resource")
     @Override
     public Transaction beginTransaction(boolean readOnly) {
-      return new Transaction(connectionSupplier, readOnly, (tx, sql) -> new DefaultContext<>(
-        () -> createSQLStatement(tx, sql),
-        (message, cause) -> new DatabaseException(this + ": " + message, cause)
-      ));
+      return new InternalTransaction(readOnly);
     }
 
     @Override
@@ -100,13 +106,30 @@ public class DatabaseBuilder {
       return DatabaseException.class;
     }
 
-    @SuppressWarnings("resource")
-    private static SQLStatement createSQLStatement(BaseTransaction<DatabaseException> tx, SafeSQL sql) {
-      try {
-        return sql.toSQLStatement(tx.getConnection());
+    private class InternalTransaction extends BaseTransaction<DatabaseException> implements Transaction {
+
+      InternalTransaction(boolean readOnly) {
+        super(connectionSupplier, readOnly, (tx, msg, cause) -> new DatabaseException(tx + ": " + msg, cause));
       }
-      catch(SQLException e) {
-        throw new DatabaseException(tx + ": creating statement failed for: " + sql, e);
+
+      @Override
+      public StatementExecutor<DatabaseException> process(StringTemplate stringTemplate) throws DatabaseException {
+        SafeSQL sql = new SafeSQL(stringTemplate);
+
+        return new StatementExecutor<>(new DefaultContext<>(
+            () -> createSQLStatement(this, sql),
+            (message, cause) -> new DatabaseException(this + ": " + message, cause)
+        ));
+      }
+
+      @SuppressWarnings("resource")
+      private static SQLStatement createSQLStatement(BaseTransaction<DatabaseException> tx, SafeSQL sql) {
+        try {
+          return sql.toSQLStatement(tx.getConnection());
+        }
+        catch(SQLException e) {
+          throw new DatabaseException(tx + ": creating statement failed for: " + sql, e);
+        }
       }
     }
   }
@@ -120,13 +143,9 @@ public class DatabaseBuilder {
       this.retryStrategy = retryStrategy;
     }
 
-    @SuppressWarnings("resource")
     @Override
     public CheckedTransaction beginTransaction(boolean readOnly) {
-      return new CheckedTransaction(connectionSupplier, readOnly, (tx, sql) -> new DefaultContext<>(
-        () -> createSQLStatement(tx, sql),
-        (message, cause) -> new SQLExceptionWrapper(tx + ": " + message, cause)
-      ));
+      return new InternalTransaction(readOnly);
     }
 
     @Override
@@ -144,16 +163,6 @@ public class DatabaseBuilder {
       return SQLException.class;
     }
 
-    @SuppressWarnings("resource")
-    private static SQLStatement createSQLStatement(BaseTransaction<SQLException> tx, SafeSQL sql) throws SQLException {
-      try {
-        return sql.toSQLStatement(tx.getConnection());
-      }
-      catch(SQLException e) {
-        throw new SQLExceptionWrapper(tx + ": creating statement failed for: " + sql, e);
-      }
-    }
-
     private static class SQLExceptionWrapper extends SQLException {
       SQLExceptionWrapper(String message, SQLException cause) {
         super(message, cause);
@@ -161,6 +170,33 @@ public class DatabaseBuilder {
 
       SQLException getSQLException() {
         return (SQLException)getCause();
+      }
+    }
+
+    private class InternalTransaction extends BaseTransaction<SQLException> implements CheckedTransaction {
+
+      InternalTransaction(boolean readOnly) {
+        super(connectionSupplier, readOnly, (tx, msg, cause) -> new SQLException(tx + ": " + msg, cause));
+      }
+
+      @Override
+      public StatementExecutor<SQLException> process(StringTemplate stringTemplate) throws DatabaseException {
+        SafeSQL sql = new SafeSQL(stringTemplate);
+
+        return new StatementExecutor<>(new DefaultContext<>(
+            () -> createSQLStatement(sql),
+            (message, cause) -> new SQLExceptionWrapper(this + ": " + message, cause)
+        ));
+      }
+
+      @SuppressWarnings("resource")
+      private SQLStatement createSQLStatement(SafeSQL sql) throws SQLException {
+        try {
+          return sql.toSQLStatement(getConnection());
+        }
+        catch(SQLException e) {
+          throw new SQLExceptionWrapper(this + ": creating statement failed for: " + sql, e);
+        }
       }
     }
   }

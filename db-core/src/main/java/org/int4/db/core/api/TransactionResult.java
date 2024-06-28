@@ -1,4 +1,4 @@
-package org.int4.db.core;
+package org.int4.db.core.api;
 
 /**
  * The final status of a transaction.

@@ -11,6 +11,7 @@ import org.int4.db.core.fluent.Context;
 import org.int4.db.core.fluent.Row;
 import org.int4.db.core.fluent.RowAccessException;
 import org.int4.db.core.fluent.SQLResult;
+import org.int4.db.core.internal.SQLStatement;
 import org.int4.db.core.util.ThrowingSupplier;
 
 class DefaultContext<X extends Exception> implements Context<X> {
