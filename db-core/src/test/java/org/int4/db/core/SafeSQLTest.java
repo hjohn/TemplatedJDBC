@@ -51,7 +51,7 @@ public class SafeSQLTest {
 
     when(connection.prepareStatement(sqlCaptor.capture(), eq(Statement.RETURN_GENERATED_KEYS))).thenReturn(preparedStatement);
 
-    PreparedStatement statement = sql.toPreparedStatement(connection);
+    SQLStatement statement = sql.toSQLStatement(connection);
 
     assertThat(sqlCaptor.getValue()).isEqualTo("""
       INSERT INTO employees (name) VALUES (?);
@@ -59,14 +59,14 @@ public class SafeSQLTest {
       SELECT * FROM employees WHERE overtime = ? AND name = ?
     """);
 
-    verify(statement).setObject(1, "John");
-    verify(statement).setObject(2, "John");
-    verify(statement).setObject(3, Date.valueOf(LocalDate.of(1234, 5, 6)));
-    verify(statement).setObject(4, 42.42);
-    verify(statement).setObject(5, true);
-    verify(statement).setString(6, "M");
-    verify(statement).setObject(7, false);
-    verify(statement).setObject(8, "John");
+    verify(preparedStatement).setObject(1, "John");
+    verify(preparedStatement).setObject(2, "John");
+    verify(preparedStatement).setObject(3, Date.valueOf(LocalDate.of(1234, 5, 6)));
+    verify(preparedStatement).setObject(4, 42.42);
+    verify(preparedStatement).setObject(5, true);
+    verify(preparedStatement).setString(6, "M");
+    verify(preparedStatement).setObject(7, false);
+    verify(preparedStatement).setObject(8, "John");
 
     assertThat(sql.toString()).isEqualTo("""
       INSERT INTO employees (name) VALUES (?);
@@ -83,11 +83,11 @@ public class SafeSQLTest {
 
     when(connection.prepareStatement(sqlCaptor.capture(), eq(Statement.RETURN_GENERATED_KEYS))).thenReturn(preparedStatement);
 
-    PreparedStatement statement = sql.toPreparedStatement(connection);
+    SQLStatement statement = sql.toSQLStatement(connection);
 
     assertThat(sqlCaptor.getValue()).isEqualTo("SELECT e.name, e.birth_date, e.salary, e.overtime, e.gender FROM employee e");
 
-    verifyNoMoreInteractions(statement);
+    verifyNoMoreInteractions(preparedStatement);
   }
 
   enum Gender {M, F}

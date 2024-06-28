@@ -1,13 +1,9 @@
 package org.int4.db.core.fluent;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.util.Iterator;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
-
-import org.int4.db.core.util.JdbcIterator;
 
 /**
  * Fluent executor for an SQL statement.
@@ -35,14 +31,14 @@ public class StatementExecutor<X extends Exception> implements RowSteps<X>, Term
    * @return a new intermediate step, never {@code null}
    */
   public RowSteps<X> mapGeneratedKeys() {
-    return new RowsNode<>(context, PreparedStatement::getGeneratedKeys);
+    return new RowsNode<>(context, SQLResult::createGeneratedKeysIterator);
   }
 
   @Override
   public <R> ExecutionStep<R, X> map(Function<Row, R> mapper) {
     Objects.requireNonNull(mapper, "mapper");
 
-    return new ExecutionStep<>(context, PreparedStatement::getResultSet, mapper);
+    return new ExecutionStep<>(context, SQLResult::createIterator, mapper);
   }
 
   /**
@@ -71,24 +67,31 @@ public class StatementExecutor<X extends Exception> implements RowSteps<X>, Term
     return context.consume(
       consumer,
       max,
-      ps -> new JdbcIterator<>() {
-        final ResultSet rs = ps.getResultSet();
-        final int columnCount = rs.getMetaData().getColumnCount();
+      sr -> new Iterator<>() {
+
+        /*
+         * This wraps the internal Iterator because it re-uses rows. As
+         * in this case Rows are returned all at once, they must retain their
+         * values even after iteration completes.
+         */
+
+        final Iterator<Row> delegate = sr.createIterator();
 
         @Override
-        public boolean next() throws SQLException {
-          return rs.next();
+        public boolean hasNext() {
+          return delegate.hasNext();
         }
 
         @Override
-        public Row get() throws SQLException {
-          Object[] row = new Object[columnCount];
+        public Row next() {
+          Row row = delegate.next();
+          Object[] data = new Object[row.getColumnCount()];
 
-          for(int i = 0; i < columnCount; i++) {
-            row[i] = rs.getObject(i + 1);
+          for(int i = 0; i < data.length; i++) {
+            data[i] = row.getObject(i);
           }
 
-          return new StaticRow(row);
+          return Row.of(data);
         }
       }
     );

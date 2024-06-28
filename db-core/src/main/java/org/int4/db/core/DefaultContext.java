@@ -1,72 +1,67 @@
 package org.int4.db.core;
 
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.Iterator;
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import org.int4.db.core.fluent.Context;
 import org.int4.db.core.fluent.Row;
 import org.int4.db.core.fluent.RowAccessException;
-import org.int4.db.core.util.JdbcFunction;
-import org.int4.db.core.util.JdbcIterator;
+import org.int4.db.core.fluent.SQLResult;
 import org.int4.db.core.util.ThrowingSupplier;
 
 class DefaultContext<X extends Exception> implements Context<X> {
-  private final ThrowingSupplier<PreparedStatement, X> preparedStatementSupplier;
+  private final ThrowingSupplier<SQLStatement, X> preparedStatementSupplier;
   private final BiFunction<String, SQLException, X> exceptionWrapper;
 
-  DefaultContext(ThrowingSupplier<PreparedStatement, X> preparedStatementSupplier, BiFunction<String, SQLException, X> exceptionWrapper) {
+  DefaultContext(ThrowingSupplier<SQLStatement, X> preparedStatementSupplier, BiFunction<String, SQLException, X> exceptionWrapper) {
     this.preparedStatementSupplier = preparedStatementSupplier;
     this.exceptionWrapper = exceptionWrapper;
   }
 
   @Override
   public void execute() throws X {
-    execute(ps -> null);
+    execute(r -> null);
   }
 
   @Override
   public long executeUpdate() throws X {
-    return execute(PreparedStatement::getLargeUpdateCount);
+    return execute(SQLResult::getUpdateCount);
   }
 
   @Override
-  public boolean consume(Consumer<Row> consumer, long max, JdbcFunction<PreparedStatement, JdbcIterator<Row>> resultSetExtractor) throws X {
+  public boolean consume(Consumer<Row> consumer, long max, Function<SQLResult, Iterator<Row>> resultExtractor) throws X {
     Objects.requireNonNull(consumer, "consumer");
 
     if(max <= 0) {
       throw new IllegalArgumentException("max must be positive: " + max);
     }
 
-    return execute(ps -> {
-      try {
-        long rowsLeft = max;
+    return execute(sr -> {
+      Iterator<Row> iterator = resultExtractor.apply(sr);
+      long rowsLeft = max;
 
-        JdbcIterator<Row> iterator = resultSetExtractor.apply(ps);
-
-        while(iterator.next() && rowsLeft-- > 0) {
-          consumer.accept(iterator.get());
-        }
-
-        return rowsLeft > 0 ? false : iterator.next();
+      while(iterator.hasNext() && rowsLeft-- > 0) {
+        consumer.accept(iterator.next());
       }
-      catch(RowAccessException e) {
-        throw e.unwrap();
-      }
+
+      return rowsLeft > 0 ? false : iterator.hasNext();
     });
   }
 
-  private <R> R execute(JdbcFunction<PreparedStatement, R> function) throws X {
-    try(PreparedStatement ps = preparedStatementSupplier.get()) {
+  private <R> R execute(Function<SQLResult, R> function) throws X {
+    try(SQLStatement statement = preparedStatementSupplier.get()) {
       try {
-        ps.execute();
-
-        return function.apply(ps);
+        return function.apply(statement.execute());
+      }
+      catch(RowAccessException e) {
+        throw exceptionWrapper.apply("execution failed for: " + statement.toString(), e.unwrap());
       }
       catch(SQLException e) {
-        throw exceptionWrapper.apply("execution failed for: " + ps.toString(), e);
+        throw exceptionWrapper.apply("execution failed for: " + statement.toString(), e);
       }
     }
     catch(SQLException e) {

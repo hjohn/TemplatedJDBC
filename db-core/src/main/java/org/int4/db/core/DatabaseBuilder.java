@@ -80,7 +80,7 @@ public class DatabaseBuilder {
     @Override
     public Transaction beginTransaction(boolean readOnly) {
       return new Transaction(connectionSupplier, readOnly, (tx, sql) -> new DefaultContext<>(
-        () -> createPreparedStatement(tx, sql),
+        () -> createSQLStatement(tx, sql),
         (message, cause) -> new DatabaseException(this + ": " + message, cause)
       ));
     }
@@ -101,9 +101,9 @@ public class DatabaseBuilder {
     }
 
     @SuppressWarnings("resource")
-    private static PreparedStatement createPreparedStatement(BaseTransaction<DatabaseException> tx, SafeSQL sql) {
+    private static SQLStatement createSQLStatement(BaseTransaction<DatabaseException> tx, SafeSQL sql) {
       try {
-        return sql.toPreparedStatement(tx.getConnection());
+        return sql.toSQLStatement(tx.getConnection());
       }
       catch(SQLException e) {
         throw new DatabaseException(tx + ": creating statement failed for: " + sql, e);
@@ -124,7 +124,7 @@ public class DatabaseBuilder {
     @Override
     public CheckedTransaction beginTransaction(boolean readOnly) {
       return new CheckedTransaction(connectionSupplier, readOnly, (tx, sql) -> new DefaultContext<>(
-        () -> createPreparedStatement(tx, sql),
+        () -> createSQLStatement(tx, sql),
         (message, cause) -> new SQLExceptionWrapper(tx + ": " + message, cause)
       ));
     }
@@ -145,9 +145,9 @@ public class DatabaseBuilder {
     }
 
     @SuppressWarnings("resource")
-    private static PreparedStatement createPreparedStatement(BaseTransaction<SQLException> tx, SafeSQL sql) throws SQLException {
+    private static SQLStatement createSQLStatement(BaseTransaction<SQLException> tx, SafeSQL sql) throws SQLException {
       try {
-        return sql.toPreparedStatement(tx.getConnection());
+        return sql.toSQLStatement(tx.getConnection());
       }
       catch(SQLException e) {
         throw new SQLExceptionWrapper(tx + ": creating statement failed for: " + sql, e);

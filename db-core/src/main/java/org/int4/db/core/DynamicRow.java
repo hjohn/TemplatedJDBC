@@ -1,9 +1,12 @@
-package org.int4.db.core.fluent;
+package org.int4.db.core;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+
+import org.int4.db.core.fluent.Row;
+import org.int4.db.core.fluent.RowAccessException;
 
 class DynamicRow implements Row {
   private final ResultSet rs;

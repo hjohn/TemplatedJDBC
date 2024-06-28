@@ -5,12 +5,14 @@ import java.lang.reflect.RecordComponent;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Iterator;
 import java.util.List;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
@@ -18,9 +20,13 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.int4.db.core.fluent.Extractor;
-import org.int4.db.core.fluent.Identifier;
 import org.int4.db.core.fluent.FieldValueSetParameter.Entries;
 import org.int4.db.core.fluent.FieldValueSetParameter.Values;
+import org.int4.db.core.fluent.Identifier;
+import org.int4.db.core.fluent.Row;
+import org.int4.db.core.fluent.RowAccessException;
+import org.int4.db.core.fluent.SQLResult;
+import org.int4.db.core.util.ThrowingSupplier;
 
 /**
  * Wrapper around a {@link StringTemplate} that can provide SQL strings and
@@ -58,12 +64,79 @@ public class SafeSQL {
     return sql;
   }
 
-  PreparedStatement toPreparedStatement(Connection connection) throws SQLException {
-    PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+  SQLStatement toSQLStatement(Connection connection) throws SQLException {
+    return new SQLStatement() {
+      final PreparedStatement ps;
 
-    fillParameters(ps, values);
+      {
+        ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+        fillParameters(ps, values);
+      }
 
-    return ps;
+      @Override
+      public SQLResult execute() throws SQLException {
+        ps.execute();
+
+        return new SQLResult() {
+          @Override
+          public Iterator<Row> createIterator() {
+            return createRowIterator(ps::getResultSet);
+          }
+
+          @Override
+          public Iterator<Row> createGeneratedKeysIterator() {
+            return createRowIterator(ps::getGeneratedKeys);
+          }
+
+          @Override
+          public long getUpdateCount() {
+            try {
+              return ps.getLargeUpdateCount();
+            }
+            catch(SQLException e) {
+              throw new RowAccessException(e);
+            }
+          }
+        };
+      }
+
+      @Override
+      public void close() throws SQLException {
+        ps.close();
+      }
+
+      @Override
+      public String toString() {
+        return sql;
+      }
+    };
+  }
+
+  private Iterator<Row> createRowIterator(ThrowingSupplier<ResultSet, SQLException> resultSetSupplier) {
+    try {
+      return new Iterator<>() {
+        final ResultSet rs = resultSetSupplier.get();
+        final DynamicRow row = new DynamicRow(rs);
+
+        @Override
+        public boolean hasNext() {
+          try {
+            return rs.next();
+          }
+          catch(SQLException e) {
+            throw new RowAccessException(e);
+          }
+        }
+
+        @Override
+        public Row next() {
+          return row;
+        }
+      };
+    }
+    catch(SQLException e) {
+      throw new RowAccessException(e);
+    }
   }
 
   private static String createSQL(StringTemplate template) {

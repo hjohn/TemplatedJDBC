@@ -2,13 +2,13 @@ package org.int4.db.test;
 
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
-import java.sql.PreparedStatement;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 import org.int4.db.core.DatabaseException;
@@ -17,8 +17,7 @@ import org.int4.db.core.SafeSQL;
 import org.int4.db.core.fluent.Context;
 import org.int4.db.core.fluent.Row;
 import org.int4.db.core.fluent.RowAccessException;
-import org.int4.db.core.util.JdbcFunction;
-import org.int4.db.core.util.JdbcIterator;
+import org.int4.db.core.fluent.SQLResult;
 import org.int4.db.core.util.ThrowingRunnable;
 import org.int4.db.core.util.ThrowingSupplier;
 
@@ -141,7 +140,7 @@ abstract class AbstractMockDatabase<X extends Exception> {
     }
 
     @Override
-    public boolean consume(Consumer<Row> consumer, long max, JdbcFunction<PreparedStatement, JdbcIterator<Row>> resultSetExtractor) throws X {
+    public boolean consume(Consumer<Row> consumer, long max, Function<SQLResult, Iterator<Row>> resultExtractor) throws X {
       String statement = sql.getSQL();
 
       for(Pattern pattern : queryMocks.keySet()) {

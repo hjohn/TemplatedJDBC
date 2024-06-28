@@ -1,13 +1,11 @@
 package org.int4.db.core.fluent;
 
-import java.sql.PreparedStatement;
+import java.util.Iterator;
 import java.util.function.Consumer;
-
-import org.int4.db.core.util.JdbcFunction;
-import org.int4.db.core.util.JdbcIterator;
+import java.util.function.Function;
 
 public interface Context<X extends Exception> {
   void execute() throws X;
   long executeUpdate() throws X;
-  boolean consume(Consumer<Row> consumer, long max, JdbcFunction<PreparedStatement, JdbcIterator<Row>> resultSetExtractor) throws X;
+  boolean consume(Consumer<Row> consumer, long max, Function<SQLResult, Iterator<Row>> resultExtractor) throws X;
 }
