@@ -25,6 +25,14 @@ public final class Identifier {
     return VALID_IDENTIFIER.matcher(text).matches();
   }
 
+  static String requireValidIdentifier(String text, String name) {
+    if(VALID_IDENTIFIER.matcher(Objects.requireNonNull(text, name)).matches()) {
+      return text;
+    }
+
+    throw new IllegalArgumentException(name + " must be a valid identifier: " + text);
+  }
+
   private final String identifier;
 
   private Identifier(String identifier) {

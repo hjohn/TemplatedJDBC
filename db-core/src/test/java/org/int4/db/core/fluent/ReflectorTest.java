@@ -5,7 +5,6 @@ import java.lang.invoke.MethodHandles.Lookup;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import org.int4.db.core.fluent.FieldValueSetParameter.Entries;
@@ -24,9 +23,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 public class ReflectorTest {
   private static final Lookup LOOKUP = MethodHandles.lookup();
   private static final Reflector<Flat> FLAT = Reflector.of(Flat.class);
-  private static final Reflector<Employee> INLINED = Reflector.of(Employee.class)
-    .inline("company", Reflector.of(Company.class).inline("location", Reflector.of(Coordinate.class)))
-    .inline("trip", Reflector.of(LOOKUP, Trip.class).inline("start", Reflector.of(Coordinate.class)).inline("end", Reflector.of(Coordinate.class)));
+  private static final Reflector<Coordinate> COORDINATE = Reflector.of(Coordinate.class);
+  private static final Reflector<Company> COMPANY = Reflector.of(Company.class);
+  private static final Reflector<Trip> TRIP = Reflector.of(Trip.class);
+  private static final Reflector<Employee> INLINED = Reflector.of(LOOKUP, Employee.class)
+    .nest("company", COMPANY.nest("location", COORDINATE))
+    .nest("trip", TRIP
+      .nest("start", COORDINATE)
+      .nest("end", COORDINATE)
+    );
 
   @Test
   void shouldCreateReflectorForPublicType() {
@@ -47,39 +52,29 @@ public class ReflectorTest {
   @Test
   void customReflectorCreationShouldRejectIllegalArguments() {
     Function<Row, Coordinate> creator = row -> { return null; };
-    BiFunction<Coordinate, Integer, Object> dataExtractor = (t, i) -> { return null; };
+    Mapping<Coordinate, Integer> m1 = Mapping.of("x", int.class, Coordinate::x);
+    Mapping<Coordinate, Integer> m2 = Mapping.of("y", int.class, Coordinate::y);
 
-    assertThatThrownBy(() -> Reflector.custom(null, List.of("x", "y"), List.of(int.class, int.class), creator, dataExtractor))
-      .isInstanceOf(NullPointerException.class);
-    assertThatThrownBy(() -> Reflector.custom(Coordinate.class, null, List.of(int.class, int.class), creator, dataExtractor))
-      .isInstanceOf(NullPointerException.class);
-    assertThatThrownBy(() -> Reflector.custom(Coordinate.class, List.of("x", "y"), null, creator, dataExtractor))
-      .isInstanceOf(NullPointerException.class);
-    assertThatThrownBy(() -> Reflector.custom(Coordinate.class, List.of("x", "y"), List.of(int.class, int.class), null, dataExtractor))
-      .isInstanceOf(NullPointerException.class);
-    assertThatThrownBy(() -> Reflector.custom(Coordinate.class, List.of("x", "y"), List.of(int.class, int.class), creator, null))
-      .isInstanceOf(NullPointerException.class);
+    assertThatThrownBy(() -> Reflector.custom(null, creator, List.of(m1, m2)))
+      .isInstanceOf(NullPointerException.class)
+      .hasMessage("type");
+    assertThatThrownBy(() -> Reflector.custom(Coordinate.class, null, List.of(m1, m2)))
+      .isInstanceOf(NullPointerException.class)
+      .hasMessage("creator");
+    assertThatThrownBy(() -> Reflector.custom(Coordinate.class, creator, null))
+      .isInstanceOf(NullPointerException.class)
+      .hasMessage("mappings");
+    assertThatThrownBy(() -> Reflector.custom(Coordinate.class, creator, Arrays.asList(m1, null)))
+      .isInstanceOf(NullPointerException.class)
+      .hasMessage("mappings[1]");
 
-    assertThatThrownBy(() -> Reflector.custom(Coordinate.class, Arrays.asList("x", null), List.of(int.class, int.class), creator, dataExtractor))
-      .isInstanceOf(NullPointerException.class);
-    assertThatThrownBy(() -> Reflector.custom(Coordinate.class, List.of("x", "y"), Arrays.asList(int.class, null), creator, dataExtractor))
-      .isInstanceOf(NullPointerException.class);
-
-    assertThatThrownBy(() -> Reflector.custom(Coordinate.class, List.of("x"), List.of(int.class, int.class), creator, dataExtractor))
+    assertThatThrownBy(() -> Reflector.custom(Coordinate.class, creator, List.of()))
       .isInstanceOf(IllegalArgumentException.class)
-      .hasMessage("must specify an equal number of names and types");
+      .hasMessage("must specify at least one mapping");
 
-    assertThatThrownBy(() -> Reflector.custom(Coordinate.class, List.of(), List.of(int.class, int.class), creator, dataExtractor))
+    assertThatThrownBy(() -> Reflector.custom(Coordinate.class, creator, List.of(m1, m1)))
       .isInstanceOf(IllegalArgumentException.class)
-      .hasMessage("must specify at least one field name");
-
-    assertThatThrownBy(() -> Reflector.custom(Coordinate.class, List.of("x", "x"), List.of(int.class, int.class), creator, dataExtractor))
-      .isInstanceOf(IllegalArgumentException.class)
-      .hasMessage("duplicate identifiers found in field names: [x, x]");
-
-    assertThatThrownBy(() -> Reflector.custom(Coordinate.class, List.of("x", "1"), List.of(int.class, int.class), creator, dataExtractor))
-      .isInstanceOf(IllegalArgumentException.class)
-      .hasMessage("invalid identifier found in field names: 1");
+      .hasMessage("names cannot contain duplicate names, but found duplicate: x in: [x, x]");
   }
 
   @Test
@@ -113,96 +108,147 @@ public class ReflectorTest {
   void shouldRejectCreatingReflectorsWithMismatchingFieldNameCount() {
     assertThatThrownBy(() -> FLAT.withNames("a"))
       .isInstanceOf(IllegalArgumentException.class)
-      .hasMessage("fieldNames must have length 8");
+      .hasMessage("fieldNames must have length 9");
   }
 
   @Test
   void shouldCreateReflectorsWithNewNames() {
-    assertThat(FLAT.withNames("a", "b", "c", "d", "e", "f", "g", "h").names())
-      .isEqualTo(List.of("a", "b", "c", "d", "e", "f", "g", "h"));
+    assertThat(FLAT.withNames("a", "b", "c", "d", "e", "f", "g", "h", "i").names())
+      .isEqualTo(List.of("a", "b", "c", "d", "e", "f", "g", "h", "i"));
+
+    assertThat(INLINED.withNames("a", "b", "c", "d", "e", "f", "g", "h", "i").names())
+      .isEqualTo(List.of("a", "b", "c", "d", "e", "f", "g", "h", "i"));
   }
 
   @Test
-  void shouldPrefixFields() {
-    record SubRecord(String a, String b, int x) {}
-    record DuplicateFieldTestRecord(String a, int x, SubRecord b) {}
+  void prefixShouldPrefixNames() {
+    assertThat(FLAT.prefix("f_").names())
+      .isEqualTo(List.of("f_name", "f_company_name", "f_company_location_x", "f_company_location_y", "f_trip_start_x", "f_trip_start_y", "f_trip_end_x", "f_trip_end_y", "f_age"));
 
-    Reflector<SubRecord> subRecordReflector = Reflector.of(LOOKUP, SubRecord.class);
-    Reflector<DuplicateFieldTestRecord> reflector = Reflector.of(LOOKUP, DuplicateFieldTestRecord.class)
-      .inline("b", subRecordReflector);
+    assertThat(INLINED.prefix("f_").names())
+      .isEqualTo(List.of("f_name", "f_company_name", "f_company_location_x", "f_company_location_y", "f_trip_start_x", "f_trip_start_y", "f_trip_end_x", "f_trip_end_y", "f_age"));
+  }
 
-    assertThat(reflector.names()).isEqualTo(List.of("a", "x", "b_a", "b_b", "b_x"));
+  @Test
+  void inlineShouldUseExistingFieldNames() {
+    Reflector<Company> reflector = COMPANY.inline("location", COORDINATE);
+
+    assertThat(reflector.names()).isEqualTo(List.of("name", "x", "y"));
+  }
+
+  @Test
+  void nestShouldPrefixFields() {
+    Reflector<Company> reflector = COMPANY.nest("location", COORDINATE);
+
+    assertThat(reflector.names()).isEqualTo(List.of("name", "location_x", "location_y"));
+  }
+
+  @Test
+  void accessingAnIllegalColumnShouldFail() {
+    Reflector<Trip> reflector = TRIP
+      .inline("start", Reflector.custom(
+        Coordinate.class,
+        row -> new Coordinate(row.getInt(0), row.getInt(2)),  // custom uses wrong column, which should throw exception
+        List.of(Mapping.of("x", int.class, Coordinate::x), Mapping.of("y", int.class, Coordinate::y))
+      ))
+      .nest("end", COORDINATE);
+
+    assertThat(reflector.names()).isEqualTo(List.of("x", "y", "end_x", "end_y"));
+    assertThatThrownBy(() -> reflector.apply(Row.of(1, 2, 3, 4)))
+      .isInstanceOf(IndexOutOfBoundsException.class)
+      .hasMessage("Index 2 out of bounds for length 2");
   }
 
   enum ReflectorCase {
     FLAT_CASE(
       FLAT,
-      new Flat("John", "Acme", 3, 4, 1, 2, 5, 6)
+      new Flat("John", "Acme", 3, 4, 1, 2, 5, 6, 49)
     ),
 
     INLINED_CASE(
       INLINED,
-      new Employee("John", new Company("Acme", new Coordinate(3, 4)), new Trip(new Coordinate(1, 2), new Coordinate(5, 6)))
+      new Employee("John", new Company("Acme", new Coordinate(3, 4)), new Trip(new Coordinate(1, 2), new Coordinate(5, 6)), 49)
     ),
 
     INLINED_CASE_RENAMED(
-      Reflector.of(Employee2.class).withNames("name", "company", "trip")
-        .inline("company", Reflector.of(Company.class).inline("location", Reflector.of(Coordinate.class)))
-        .inline("trip", Reflector.of(LOOKUP, Trip.class).inline("start", Reflector.of(Coordinate.class)).inline("end", Reflector.of(Coordinate.class))),
-      new Employee2("John", new Company("Acme", new Coordinate(3, 4)), new Trip(new Coordinate(1, 2), new Coordinate(5, 6)))
+      Reflector.of(Employee2.class).withNames("name", "company", "trip", "age")
+        .nest("company", Reflector.of(Company.class).nest("location", Reflector.of(Coordinate.class)))
+        .nest("trip", Reflector.of(LOOKUP, Trip.class).nest("start", Reflector.of(Coordinate.class)).nest("end", Reflector.of(Coordinate.class))),
+      new Employee2("John", new Company("Acme", new Coordinate(3, 4)), new Trip(new Coordinate(1, 2), new Coordinate(5, 6)), 49)
     ),
 
     BEAN(
       Reflector.ofClass(FlatBean.class),
-      new FlatBean("John", "Acme", 3, 4, 1, 2, 5, 6)
+      new FlatBean("John", "Acme", 3, 4, 1, 2, 5, 6, 49)
     ),
 
     CUSTOM(
       Reflector.custom(
         Flat.class,
-        List.of("name", "company_name", "company_location_x", "company_location_y", "trip_start_x", "trip_start_y", "trip_end_x", "trip_end_y"),
-        List.of(String.class, String.class, int.class, int.class, int.class, int.class, int.class, int.class),
-        row -> new Flat(row.getString(0), row.getString(1), row.getInt(2), row.getInt(3), row.getInt(4), row.getInt(5), row.getInt(6), row.getInt(7)),
-        (t, index) -> switch(index) {
-          case 0 -> t.name();
-          case 1 -> t.companyName();
-          case 2 -> t.companyLocationX();
-          case 3 -> t.companyLocationY();
-          case 4 -> t.tripStartX();
-          case 5 -> t.tripStartY();
-          case 6 -> t.tripEndX();
-          case 7 -> t.tripEndY();
-          default -> throw new IllegalArgumentException();
-        }
+        row -> new Flat(row.getString(0), row.getString(1), row.getInt(2), row.getInt(3), row.getInt(4), row.getInt(5), row.getInt(6), row.getInt(7), row.getInt(8)),
+        List.of(
+          Mapping.of("name", String.class, Flat::name),
+          Mapping.of("company_name", String.class, Flat::companyName),
+          Mapping.of("company_location_x", int.class, Flat::companyLocationX),
+          Mapping.of("company_location_y", int.class, Flat::companyLocationY),
+          Mapping.of("trip_start_x", int.class, Flat::tripStartX),
+          Mapping.of("trip_start_y", int.class, Flat::tripStartY),
+          Mapping.of("trip_end_x", int.class, Flat::tripEndX),
+          Mapping.of("trip_end_y", int.class, Flat::tripEndY),
+          Mapping.of("age", int.class, Flat::age)
+        )
       ),
-      new Flat("John", "Acme", 3, 4, 1, 2, 5, 6)
+      new Flat("John", "Acme", 3, 4, 1, 2, 5, 6, 49)
     ),
 
     PARTIAL_FLAT(
       Reflector.of(PartialFlat.class)
-        .inline("company_location", Reflector.of(Coordinate.class)),
-      new PartialFlat("John", "Acme", new Coordinate(3, 4), 1, 2, 5, 6)
+        .inline("company_location", Reflector.of(Coordinate.class).prefix("company_location_")),
+      new PartialFlat("John", "Acme", new Coordinate(3, 4), 1, 2, 5, 6, 49)
     ),
 
     CUSTOM_INLINE(
       Reflector.custom(
         PartialFlat.class,
-        List.of("name", "company_name", "company_location", "trip_start_x", "trip_start_y", "trip_end_x", "trip_end_y"),
-        List.of(String.class, String.class, Coordinate.class, int.class, int.class, int.class, int.class),
-        row -> new PartialFlat(row.getString(0), row.getString(1), row.getObject(2, Coordinate.class), row.getInt(3), row.getInt(4), row.getInt(5), row.getInt(6)),
-        (t, index) -> switch(index) {
-          case 0 -> t.name();
-          case 1 -> t.companyName();
-          case 2 -> t.companyLocation();
-          case 3 -> t.tripStartX();
-          case 4 -> t.tripStartY();
-          case 5 -> t.tripEndX();
-          case 6 -> t.tripEndY();
-          default -> throw new IllegalArgumentException();
-        }
+        row -> new PartialFlat(row.getString(0), row.getString(1), row.getObject(2, Coordinate.class), row.getInt(3), row.getInt(4), row.getInt(5), row.getInt(6), row.getInt(7)),
+        List.of(
+          Mapping.of("name", String.class, PartialFlat::name),
+          Mapping.of("company_name", String.class, PartialFlat::companyName),
+          Mapping.of("company_location", Coordinate.class, PartialFlat::companyLocation),
+          Mapping.of("trip_start_x", int.class, PartialFlat::tripStartX),
+          Mapping.of("trip_start_y", int.class, PartialFlat::tripStartY),
+          Mapping.of("trip_end_x", int.class, PartialFlat::tripEndX),
+          Mapping.of("trip_end_y", int.class, PartialFlat::tripEndY),
+          Mapping.of("age", int.class, PartialFlat::age)
+        )
       )
-      .inline("company_location", Reflector.of(Coordinate.class)),
-      new PartialFlat("John", "Acme", new Coordinate(3, 4), 1, 2, 5, 6)
+      .nest("company_location", Reflector.of(Coordinate.class)),
+      new PartialFlat("John", "Acme", new Coordinate(3, 4), 1, 2, 5, 6, 49)
+    ),
+
+    CUSTOM_WITH_MANUAL_INLINE(
+      Reflector.custom(
+        PartialFlat.class,
+        row -> new PartialFlat(row.getString(0), row.getString(1), row.getObject(2, Coordinate.class), row.getInt(3), row.getInt(4), row.getInt(5), row.getInt(6), row.getInt(7)),
+        List.of(
+          Mapping.of("name", String.class, PartialFlat::name),
+          Mapping.of("company_name", String.class, PartialFlat::companyName),
+          Mapping.inline(PartialFlat::companyLocation, Reflector.custom(
+            Coordinate.class,
+            row -> new Coordinate(row.getInt(0), row.getInt(1)),
+            List.of(
+              Mapping.of("company_location_x", int.class, Coordinate::x),
+              Mapping.of("company_location_y", int.class, Coordinate::y)
+            )
+          )),
+          Mapping.of("trip_start_x", int.class, PartialFlat::tripStartX),
+          Mapping.of("trip_start_y", int.class, PartialFlat::tripStartY),
+          Mapping.of("trip_end_x", int.class, PartialFlat::tripEndX),
+          Mapping.of("trip_end_y", int.class, PartialFlat::tripEndY),
+          Mapping.of("age", int.class, PartialFlat::age)
+        )
+      ),
+      new PartialFlat("John", "Acme", new Coordinate(3, 4), 1, 2, 5, 6, 49)
     );
 
     final Reflector<Object> reflector;
@@ -222,7 +268,7 @@ public class ReflectorTest {
     @EnumSource(ReflectorCase.class)
     void shouldExcludeFields(ReflectorCase c) {
       assertThat(c.reflector.excluding("company_location_x", "company_location_y").names())
-        .isEqualTo(List.of("name", "company_name", "", "", "trip_start_x", "trip_start_y", "trip_end_x", "trip_end_y"));
+        .isEqualTo(List.of("name", "company_name", "", "", "trip_start_x", "trip_start_y", "trip_end_x", "trip_end_y", "age"));
     }
 
     @ParameterizedTest
@@ -230,14 +276,14 @@ public class ReflectorTest {
     void shouldRejectExcludingNonExistingFields(ReflectorCase c) {
       assertThatThrownBy(() -> c.reflector.excluding("company_location_x", "b"))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("unable to exclude non-existing fields: [b]");
+        .hasMessage("unable to exclude non-existing fields: [b], available are: [name, company_name, company_location_x, company_location_y, trip_start_x, trip_start_y, trip_end_x, trip_end_y, age]");
     }
 
     @ParameterizedTest
     @EnumSource(ReflectorCase.class)
     void shouldKeepFields(ReflectorCase c) {
       assertThat(c.reflector.only("company_location_x", "company_location_y").names())
-        .isEqualTo(List.of("", "", "company_location_x", "company_location_y", "", "", "", ""));
+        .isEqualTo(List.of("", "", "company_location_x", "company_location_y", "", "", "", "", ""));
     }
 
     @ParameterizedTest
@@ -253,7 +299,7 @@ public class ReflectorTest {
     void shouldCreateValues(ReflectorCase c) {
       Values baseValues = c.reflector.values(c.testObject);
 
-      assertThat(baseValues.names()).isEqualTo(List.of("name", "company_name", "company_location_x", "company_location_y", "trip_start_x", "trip_start_y", "trip_end_x", "trip_end_y"));
+      assertThat(baseValues.names()).isEqualTo(List.of("name", "company_name", "company_location_x", "company_location_y", "trip_start_x", "trip_start_y", "trip_end_x", "trip_end_y", "age"));
       assertThat(baseValues.getValue(0)).isEqualTo("John");
       assertThat(baseValues.getValue(1)).isEqualTo("Acme");
       assertThat(baseValues.getValue(2)).isEqualTo(3);
@@ -262,6 +308,7 @@ public class ReflectorTest {
       assertThat(baseValues.getValue(5)).isEqualTo(2);
       assertThat(baseValues.getValue(6)).isEqualTo(5);
       assertThat(baseValues.getValue(7)).isEqualTo(6);
+      assertThat(baseValues.getValue(8)).isEqualTo(49);
     }
 
     @ParameterizedTest
@@ -269,7 +316,7 @@ public class ReflectorTest {
     void shouldCreateEntries(ReflectorCase c) {
       Entries baseValues = c.reflector.entries(c.testObject);
 
-      assertThat(baseValues.names()).isEqualTo(List.of("name", "company_name", "company_location_x", "company_location_y", "trip_start_x", "trip_start_y", "trip_end_x", "trip_end_y"));
+      assertThat(baseValues.names()).isEqualTo(List.of("name", "company_name", "company_location_x", "company_location_y", "trip_start_x", "trip_start_y", "trip_end_x", "trip_end_y", "age"));
       assertThat(baseValues.getValue(0)).isEqualTo("John");
       assertThat(baseValues.getValue(1)).isEqualTo("Acme");
       assertThat(baseValues.getValue(2)).isEqualTo(3);
@@ -278,11 +325,12 @@ public class ReflectorTest {
       assertThat(baseValues.getValue(5)).isEqualTo(2);
       assertThat(baseValues.getValue(6)).isEqualTo(5);
       assertThat(baseValues.getValue(7)).isEqualTo(6);
+      assertThat(baseValues.getValue(8)).isEqualTo(49);
     }
 
     @Nested
     class AndARowNeedsMapping {
-      private final Row row = Row.of("John", "Acme", 3, 4, 1, 2, 5, 6);
+      private final Row row = Row.of("John", "Acme", 3, 4, 1, 2, 5, 6, 49);
 
       @ParameterizedTest
       @EnumSource(ReflectorCase.class)
@@ -301,8 +349,9 @@ public class ReflectorTest {
     private int tripStartY;
     private int tripEndX;
     private int tripEndY;
+    private int age;
 
-    public FlatBean(String name, String companyName, int companyLocationX, int companyLocationY, int tripStartX, int tripStartY, int tripEndX, int tripEndY) {
+    public FlatBean(String name, String companyName, int companyLocationX, int companyLocationY, int tripStartX, int tripStartY, int tripEndX, int tripEndY, int age) {
       this.name = name;
       this.companyName = companyName;
       this.companyLocationX = companyLocationX;
@@ -311,6 +360,7 @@ public class ReflectorTest {
       this.tripStartY = tripStartY;
       this.tripEndX = tripEndX;
       this.tripEndY = tripEndY;
+      this.age = age;
     }
 
     public String getName() {
@@ -345,9 +395,13 @@ public class ReflectorTest {
       return tripEndY;
     }
 
+    public int getAge() {
+      return age;
+    }
+
     @Override
     public int hashCode() {
-      return Objects.hash(companyLocationX, companyLocationY, companyName, name, tripEndX, tripEndY, tripStartX, tripStartY);
+      return Objects.hash(companyLocationX, companyLocationY, companyName, name, tripEndX, tripEndY, tripStartX, tripStartY, age);
     }
 
     @Override
@@ -355,22 +409,25 @@ public class ReflectorTest {
       if(this == obj) {
         return true;
       }
-      if(obj == null) {
+      if(obj == null || getClass() != obj.getClass()) {
         return false;
       }
-      if(getClass() != obj.getClass()) {
-        return false;
-      }
+
       FlatBean other = (FlatBean)obj;
-      return companyLocationX == other.companyLocationX && companyLocationY == other.companyLocationY && Objects.equals(companyName, other.companyName) && Objects.equals(name, other.name) && tripEndX == other.tripEndX && tripEndY == other.tripEndY && tripStartX == other.tripStartX && tripStartY == other.tripStartY;
+
+      return companyLocationX == other.companyLocationX && companyLocationY == other.companyLocationY
+          && Objects.equals(companyName, other.companyName) && Objects.equals(name, other.name)
+          && tripEndX == other.tripEndX && tripEndY == other.tripEndY
+          && tripStartX == other.tripStartX && tripStartY == other.tripStartY
+          && age == other.age;
     }
   }
 
-  public record Flat(String name, String companyName, int companyLocationX, int companyLocationY, int tripStartX, int tripStartY, int tripEndX, int tripEndY) {}
-  public record PartialFlat(String name, String companyName, Coordinate companyLocation, int tripStartX, int tripStartY, int tripEndX, int tripEndY) {}
-  public record Employee(String name, Company company, Trip trip) {}
-  public record Employee2(String naam, Company bedrijf, Trip trip) {}
-  private record Trip(Coordinate start, Coordinate end) {}
+  public record Flat(String name, String companyName, int companyLocationX, int companyLocationY, int tripStartX, int tripStartY, int tripEndX, int tripEndY, int age) {}
+  public record PartialFlat(String name, String companyName, Coordinate companyLocation, int tripStartX, int tripStartY, int tripEndX, int tripEndY, int age) {}
+  private record Employee(String name, Company company, Trip trip, int age) {}
+  public record Employee2(String naam, Company bedrijf, Trip trip, int leeftijd) {}
+  public record Trip(Coordinate start, Coordinate end) {}
   public record Company(String name, Coordinate location) {}
   public record Coordinate(int x, int y) {}
 }

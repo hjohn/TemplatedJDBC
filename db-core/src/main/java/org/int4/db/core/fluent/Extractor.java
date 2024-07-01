@@ -1,10 +1,6 @@
 package org.int4.db.core.fluent;
 
-import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
-import java.util.function.BiFunction;
 
 import org.int4.db.core.fluent.FieldValueSetParameter.Entries;
 import org.int4.db.core.fluent.FieldValueSetParameter.Values;
@@ -15,28 +11,9 @@ import org.int4.db.core.fluent.FieldValueSetParameter.Values;
  *
  * @param <T> the type being extracted from
  */
-public class Extractor<T> {  // TODO perhaps implement marker interface TemplateParameter ?
-  private final List<String> names;
+public interface Extractor<T> {
 
-  final BiFunction<T, Integer, Object> dataExtractor;
-
-  Extractor(List<String> names, BiFunction<T, Integer, Object> dataExtractor) {
-    this.names = List.copyOf(names);
-    this.dataExtractor = dataExtractor;
-
-    Set<String> uniqueNames = new HashSet<>();
-
-    for(String name : names) {
-      if(!name.isEmpty()) {
-        if(!Identifier.isValidIdentifier(name)) {
-          throw new IllegalArgumentException("names must only contain valid identifiers: " + name);
-        }
-        if(!uniqueNames.add(name)) {
-          throw new IllegalArgumentException("names cannot contain duplicate names, but found duplicate: " + name + " in: " + names);
-        }
-      }
-    }
-  }
+  Object extractObject(T t, int columnIndex);
 
   /**
    * Returns a list of field names, in which gaps are represented as
@@ -44,9 +21,7 @@ public class Extractor<T> {  // TODO perhaps implement marker interface Template
    *
    * @return a list of field names, never {@code null}
    */
-  public List<String> names() {
-    return names;
-  }
+  List<String> names();
 
   /**
    * Given a type {@code T}, provides a template parameter that inserts its fields
@@ -55,9 +30,7 @@ public class Extractor<T> {  // TODO perhaps implement marker interface Template
    * @param t a type {@code T}, cannot be {@code null}
    * @return an entries template parameter, never {@code null}
    */
-  public Entries entries(T t) {
-    return new Entries(names, index -> dataExtractor.apply(t, index));
-  }
+  Entries entries(T t);
 
   /**
    * Given a type {@code T}, provides a template parameter that inserts its values
@@ -66,9 +39,7 @@ public class Extractor<T> {  // TODO perhaps implement marker interface Template
    * @param t a type {@code T}, cannot be {@code null}
    * @return a values template parameter, never {@code null}
    */
-  public Values values(T t) {
-    return new Values(names, index -> dataExtractor.apply(t, index));
-  }
+  Values values(T t);
 
   /**
    * Creates a new extractor based on this one, but excluding the given
@@ -78,16 +49,7 @@ public class Extractor<T> {  // TODO perhaps implement marker interface Template
    * @return a new extractor minus the given names, never {@code null}
    * @throws IllegalArgumentException when one or more names are missing
    */
-  public Extractor<T> excluding(String... names) {
-    Set<String> set = new LinkedHashSet<>(List.of(names));
-    Extractor<T> extractor = new Extractor<>(this.names.stream().map(n -> set.remove(n) ? "" : n).toList(), dataExtractor);
-
-    if(!set.isEmpty()) {
-      throw new IllegalArgumentException("unable to exclude non-existing fields: " + set);
-    }
-
-    return extractor;
-  }
+  Extractor<T> excluding(String... names);
 
   /**
    * Creates a new extractor based on this one, but keeping only the
@@ -97,19 +59,5 @@ public class Extractor<T> {  // TODO perhaps implement marker interface Template
    * @return a new extractor with only the given names, never {@code null}
    * @throws IllegalArgumentException when one or more names are missing
    */
-  public Extractor<T> only(String... names) {
-    Set<String> set = new LinkedHashSet<>(List.of(names));
-    Extractor<T> extractor = new Extractor<>(this.names.stream().map(n -> set.remove(n) ? n : "").toList(), dataExtractor);
-
-    if(!set.isEmpty()) {
-      throw new IllegalArgumentException("unable to keep non-existing fields: " + set);
-    }
-
-    return extractor;
-  }
-
-  @Override
-  public String toString() {
-    return names.toString();
-  }
+  Extractor<T> only(String... names);
 }
