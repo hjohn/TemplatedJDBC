@@ -9,8 +9,8 @@ import java.time.Instant;
 import javax.sql.DataSource;
 
 import org.int4.db.core.api.Database;
-import org.int4.db.core.api.TypeConverter;
-import org.int4.db.core.fluent.Reflector;
+import org.int4.db.core.reflect.Reflector;
+import org.int4.db.core.reflect.TypeConverter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

@@ -1,4 +1,4 @@
-package org.int4.db.core.fluent;
+package org.int4.db.core.reflect;
 
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -7,8 +7,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
 
-import org.int4.db.core.fluent.FieldValueSetParameter.Entries;
-import org.int4.db.core.fluent.FieldValueSetParameter.Values;
+import org.int4.db.core.reflect.FieldValueSetParameter.Entries;
+import org.int4.db.core.reflect.FieldValueSetParameter.Values;
 
 /**
  * Provides template parameters providing field and field/value

@@ -5,6 +5,8 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import org.int4.db.core.reflect.Row;
+
 public class ExecutionStep<T, X extends Exception> implements MappingSteps<T, X>, TerminalMappingSteps<T, X> {
   private final Context<X> context;
   private final Function<SQLResult, Iterator<Row>> step;

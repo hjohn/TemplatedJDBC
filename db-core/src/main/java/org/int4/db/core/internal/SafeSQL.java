@@ -18,14 +18,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.int4.db.core.api.TypeConverter;
-import org.int4.db.core.fluent.Extractor;
-import org.int4.db.core.fluent.FieldValueSetParameter.Entries;
-import org.int4.db.core.fluent.FieldValueSetParameter.Values;
-import org.int4.db.core.fluent.Identifier;
-import org.int4.db.core.fluent.Row;
-import org.int4.db.core.fluent.RowAccessException;
 import org.int4.db.core.fluent.SQLResult;
+import org.int4.db.core.reflect.Extractor;
+import org.int4.db.core.reflect.Identifier;
+import org.int4.db.core.reflect.Row;
+import org.int4.db.core.reflect.RowAccessException;
+import org.int4.db.core.reflect.TypeConverter;
+import org.int4.db.core.reflect.FieldValueSetParameter.Entries;
+import org.int4.db.core.reflect.FieldValueSetParameter.Values;
 import org.int4.db.core.util.ThrowingSupplier;
 
 /**

@@ -4,6 +4,8 @@ import java.util.Iterator;
 import java.util.Objects;
 import java.util.function.Function;
 
+import org.int4.db.core.reflect.Row;
+
 class RowsNode<X extends Exception> implements RowSteps<X> {
   private final Context<X> context;
   private final Function<SQLResult, Iterator<Row>> step;

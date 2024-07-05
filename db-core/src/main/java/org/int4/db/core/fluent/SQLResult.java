@@ -2,6 +2,8 @@ package org.int4.db.core.fluent;
 
 import java.util.Iterator;
 
+import org.int4.db.core.reflect.Row;
+
 /**
  * Bridge interface between the JDBC world and the templated world.
  *

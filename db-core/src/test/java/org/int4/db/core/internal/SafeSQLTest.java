@@ -15,12 +15,12 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.int4.db.core.api.TypeConverter;
-import org.int4.db.core.fluent.Extractor;
-import org.int4.db.core.fluent.Identifier;
-import org.int4.db.core.fluent.Reflector;
-import org.int4.db.core.fluent.Row;
 import org.int4.db.core.fluent.SQLResult;
+import org.int4.db.core.reflect.Extractor;
+import org.int4.db.core.reflect.Identifier;
+import org.int4.db.core.reflect.Reflector;
+import org.int4.db.core.reflect.Row;
+import org.int4.db.core.reflect.TypeConverter;
 import org.int4.db.core.util.MockResultSet;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

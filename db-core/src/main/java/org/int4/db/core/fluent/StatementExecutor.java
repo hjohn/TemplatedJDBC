@@ -5,6 +5,8 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import org.int4.db.core.reflect.Row;
+
 /**
  * Fluent executor for an SQL statement.
  *

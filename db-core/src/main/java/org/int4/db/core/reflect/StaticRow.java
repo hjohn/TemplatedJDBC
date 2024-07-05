@@ -1,4 +1,4 @@
-package org.int4.db.core.fluent;
+package org.int4.db.core.reflect;
 
 import java.sql.Timestamp;
 import java.time.Instant;

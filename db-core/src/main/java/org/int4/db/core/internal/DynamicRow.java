@@ -4,9 +4,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Map;
 
-import org.int4.db.core.api.TypeConverter;
-import org.int4.db.core.fluent.Row;
-import org.int4.db.core.fluent.RowAccessException;
+import org.int4.db.core.reflect.Row;
+import org.int4.db.core.reflect.RowAccessException;
+import org.int4.db.core.reflect.TypeConverter;
 
 class DynamicRow implements Row {
   private final Map<Class<?>, TypeConverter<?, ?>> typeConverters;

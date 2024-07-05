@@ -1,5 +1,8 @@
 package org.int4.db.core.fluent;
 
+import org.int4.db.core.reflect.Mapper;
+import org.int4.db.core.reflect.Row;
+
 /**
  * Provides steps to convert {@link Row}s to a new type of result.
  *

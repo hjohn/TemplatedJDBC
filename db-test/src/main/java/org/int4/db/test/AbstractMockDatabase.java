@@ -14,10 +14,10 @@ import java.util.regex.Pattern;
 import org.int4.db.core.api.DatabaseException;
 import org.int4.db.core.api.RetryStrategy;
 import org.int4.db.core.fluent.Context;
-import org.int4.db.core.fluent.Row;
-import org.int4.db.core.fluent.RowAccessException;
 import org.int4.db.core.fluent.SQLResult;
 import org.int4.db.core.internal.SafeSQL;
+import org.int4.db.core.reflect.Row;
+import org.int4.db.core.reflect.RowAccessException;
 import org.int4.db.core.util.ThrowingRunnable;
 import org.int4.db.core.util.ThrowingSupplier;
 

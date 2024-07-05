@@ -1,4 +1,4 @@
-package org.int4.db.core.api;
+package org.int4.db.core.reflect;
 
 import java.util.Objects;
 import java.util.function.Function;

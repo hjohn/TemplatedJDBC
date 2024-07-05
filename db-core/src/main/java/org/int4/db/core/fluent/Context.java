@@ -4,6 +4,8 @@ import java.util.Iterator;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import org.int4.db.core.reflect.Row;
+
 public interface Context<X extends Exception> {
   void execute() throws X;
   long executeUpdate() throws X;

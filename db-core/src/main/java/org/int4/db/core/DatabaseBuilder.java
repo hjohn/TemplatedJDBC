@@ -18,11 +18,11 @@ import org.int4.db.core.api.Database;
 import org.int4.db.core.api.DatabaseException;
 import org.int4.db.core.api.RetryStrategy;
 import org.int4.db.core.api.Transaction;
-import org.int4.db.core.api.TypeConverter;
 import org.int4.db.core.fluent.StatementExecutor;
 import org.int4.db.core.internal.BaseTransaction;
 import org.int4.db.core.internal.SQLStatement;
 import org.int4.db.core.internal.SafeSQL;
+import org.int4.db.core.reflect.TypeConverter;
 
 /**
  * Builder for {@link Database} and {@link CheckedDatabase} instances.

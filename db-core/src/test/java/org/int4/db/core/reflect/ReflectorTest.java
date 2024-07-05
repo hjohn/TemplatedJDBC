@@ -1,4 +1,4 @@
-package org.int4.db.core.fluent;
+package org.int4.db.core.reflect;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
@@ -7,8 +7,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 
-import org.int4.db.core.fluent.FieldValueSetParameter.Entries;
-import org.int4.db.core.fluent.FieldValueSetParameter.Values;
+import org.int4.db.core.reflect.FieldValueSetParameter.Entries;
+import org.int4.db.core.reflect.FieldValueSetParameter.Values;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -101,7 +101,7 @@ public class ReflectorTest {
 
     assertThatThrownBy(() -> reflector.inline("start", Reflector.of(Company.class)))
       .isInstanceOf(IllegalArgumentException.class)
-      .hasMessage("reflector for inlining field 'start' must be of type: class org.int4.db.core.fluent.ReflectorTest$Coordinate");
+      .hasMessage("reflector for inlining field 'start' must be of type: class org.int4.db.core.reflect.ReflectorTest$Coordinate");
   }
 
   @Test

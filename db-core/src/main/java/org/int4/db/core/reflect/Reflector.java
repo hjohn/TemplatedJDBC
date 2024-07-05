@@ -1,4 +1,4 @@
-package org.int4.db.core.fluent;
+package org.int4.db.core.reflect;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
@@ -7,9 +7,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 
-import org.int4.db.core.fluent.BeanClassDisecter.BeanClassDetails;
-import org.int4.db.core.fluent.DefaultReflector.IndexedMapping;
-import org.int4.db.core.fluent.RecordDisecter.RecordDetails;
+import org.int4.db.core.reflect.BeanClassDisecter.BeanClassDetails;
+import org.int4.db.core.reflect.DefaultReflector.IndexedMapping;
+import org.int4.db.core.reflect.RecordDisecter.RecordDetails;
 
 /**
  * A combination of an {@link Extractor} and {@link Mapper} which can
