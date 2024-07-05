@@ -17,7 +17,7 @@ import org.int4.db.core.fluent.RecordDisecter.RecordDetails;
  *
  * @param <T> the reflected type
  */
-public interface Reflector<T> extends Extractor<T>, Mapper<T> {
+public sealed interface Reflector<T> extends Extractor<T>, Mapper<T> permits DefaultReflector {
 
   /**
    * Creates a reflector for the given record type, mapping each of its

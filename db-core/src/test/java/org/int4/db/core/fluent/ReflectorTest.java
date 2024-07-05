@@ -300,15 +300,15 @@ public class ReflectorTest {
       Values baseValues = c.reflector.values(c.testObject);
 
       assertThat(baseValues.names()).isEqualTo(List.of("name", "company_name", "company_location_x", "company_location_y", "trip_start_x", "trip_start_y", "trip_end_x", "trip_end_y", "age"));
-      assertThat(baseValues.getValue(0)).isEqualTo("John");
-      assertThat(baseValues.getValue(1)).isEqualTo("Acme");
-      assertThat(baseValues.getValue(2)).isEqualTo(3);
-      assertThat(baseValues.getValue(3)).isEqualTo(4);
-      assertThat(baseValues.getValue(4)).isEqualTo(1);
-      assertThat(baseValues.getValue(5)).isEqualTo(2);
-      assertThat(baseValues.getValue(6)).isEqualTo(5);
-      assertThat(baseValues.getValue(7)).isEqualTo(6);
-      assertThat(baseValues.getValue(8)).isEqualTo(49);
+      assertThat(baseValues.getValue(0, 0)).isEqualTo("John");
+      assertThat(baseValues.getValue(0, 1)).isEqualTo("Acme");
+      assertThat(baseValues.getValue(0, 2)).isEqualTo(3);
+      assertThat(baseValues.getValue(0, 3)).isEqualTo(4);
+      assertThat(baseValues.getValue(0, 4)).isEqualTo(1);
+      assertThat(baseValues.getValue(0, 5)).isEqualTo(2);
+      assertThat(baseValues.getValue(0, 6)).isEqualTo(5);
+      assertThat(baseValues.getValue(0, 7)).isEqualTo(6);
+      assertThat(baseValues.getValue(0, 8)).isEqualTo(49);
     }
 
     @ParameterizedTest
@@ -317,15 +317,15 @@ public class ReflectorTest {
       Entries baseValues = c.reflector.entries(c.testObject);
 
       assertThat(baseValues.names()).isEqualTo(List.of("name", "company_name", "company_location_x", "company_location_y", "trip_start_x", "trip_start_y", "trip_end_x", "trip_end_y", "age"));
-      assertThat(baseValues.getValue(0)).isEqualTo("John");
-      assertThat(baseValues.getValue(1)).isEqualTo("Acme");
-      assertThat(baseValues.getValue(2)).isEqualTo(3);
-      assertThat(baseValues.getValue(3)).isEqualTo(4);
-      assertThat(baseValues.getValue(4)).isEqualTo(1);
-      assertThat(baseValues.getValue(5)).isEqualTo(2);
-      assertThat(baseValues.getValue(6)).isEqualTo(5);
-      assertThat(baseValues.getValue(7)).isEqualTo(6);
-      assertThat(baseValues.getValue(8)).isEqualTo(49);
+      assertThat(baseValues.getValue(0, 0)).isEqualTo("John");
+      assertThat(baseValues.getValue(0, 1)).isEqualTo("Acme");
+      assertThat(baseValues.getValue(0, 2)).isEqualTo(3);
+      assertThat(baseValues.getValue(0, 3)).isEqualTo(4);
+      assertThat(baseValues.getValue(0, 4)).isEqualTo(1);
+      assertThat(baseValues.getValue(0, 5)).isEqualTo(2);
+      assertThat(baseValues.getValue(0, 6)).isEqualTo(5);
+      assertThat(baseValues.getValue(0, 7)).isEqualTo(6);
+      assertThat(baseValues.getValue(0, 8)).isEqualTo(49);
     }
 
     @Nested

@@ -115,4 +115,18 @@ public interface Row {
    */
   boolean getBoolean(int columnIndex);
 
+  /**
+   * Converts this row to an array of objects.
+   *
+   * @return an array of objects, never {@code null}
+   */
+  default Object[] toArray() {
+    Object[] array = new Object[getColumnCount()];
+
+    for(int i = 0; i < array.length; i++) {
+      array[i] = getObject(i);
+    }
+
+    return array;
+  }
 }

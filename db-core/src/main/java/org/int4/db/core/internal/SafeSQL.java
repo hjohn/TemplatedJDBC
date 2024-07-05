@@ -11,6 +11,7 @@ import java.sql.Types;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
@@ -43,7 +44,7 @@ public class SafeSQL {
    * Constructs a new instance.
    *
    * @param template a {@link StringTemplate}, cannot be {@code null}
-   * @param typeConverters a map of {@link TtypeConverter}s, cannot be {@code null}
+   * @param typeConverters a map of {@link TypeConverter}s, cannot be {@code null}
    * @throws NullPointerException when any argument is {@code null}
    */
   public SafeSQL(StringTemplate template, Map<Class<?>, TypeConverter<?, ?>> typeConverters) {
@@ -69,15 +70,21 @@ public class SafeSQL {
   public SQLStatement toSQLStatement(Connection connection) throws SQLException {
     return new SQLStatement() {
       final PreparedStatement ps;
+      final boolean isBatch;
 
       {
         ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-        fillParameters(ps, values);
+        isBatch = fillParameters(ps, values);
       }
 
       @Override
       public SQLResult execute() throws SQLException {
-        ps.execute();
+        if(isBatch) {
+          ps.executeBatch();
+        }
+        else {
+          ps.execute();
+        }
 
         return new SQLResult() {
           @Override
@@ -120,18 +127,32 @@ public class SafeSQL {
         final ResultSet rs = resultSetSupplier.get();
         final DynamicRow row = new DynamicRow(typeConverters, rs);
 
+        boolean nextResult;
+        boolean nextCalled;
+
         @Override
         public boolean hasNext() {
-          try {
-            return rs.next();
+          if(!nextCalled) {
+            try {
+              nextResult = rs.next();
+              nextCalled = true;
+            }
+            catch(SQLException e) {
+              throw new RowAccessException(e);
+            }
           }
-          catch(SQLException e) {
-            throw new RowAccessException(e);
-          }
+
+          return nextResult;
         }
 
         @Override
         public Row next() {
+          if(!hasNext()) {
+            throw new NoSuchElementException();
+          }
+
+          nextCalled = false;
+
           return row;
         }
       };
@@ -151,6 +172,15 @@ public class SafeSQL {
       Object value = values.get(i);
 
       sb.append(fragment);
+
+      if(value instanceof List<?> l) {
+        if(l.isEmpty()) {
+          throw new IllegalArgumentException("parameter " + i + " of type " + l.getClass() + " should not be empty: " + template);
+        }
+
+        // Use first element of any list to build up the prepared statement:
+        value = l.getFirst();
+      }
 
       appendTemplateValue(sb, value, fragment);
     }
@@ -196,15 +226,49 @@ public class SafeSQL {
     }
   }
 
-  private void fillParameters(PreparedStatement ps, List<Object> values) throws SQLException {
-    int index = 1;
+  private boolean fillParameters(PreparedStatement ps, List<Object> values) throws SQLException {
+    int batchSize = -1;
 
     for(Object value : values) {
-      index = fillParameter(index, ps, value);
+      int size = value instanceof List<?> l ? l.size() : value instanceof Values v ? v.batchSize() : 1;
+
+      assert size != 0 : "batches cannot be empty";  // shouldn't be able to get here with size == 0
+
+      if(size > 1) {  // size of 1 is not considered a batch
+        if(batchSize == -1) {
+          batchSize = size;
+        }
+        else if(size != batchSize) {
+          throw new IllegalArgumentException("batches are of different sizes");
+        }
+      }
     }
+
+    if(batchSize == -1) {
+      batchSize = 1;
+    }
+
+    for(int row = 0; row < batchSize; row++) {
+      int index = 1;
+
+      for(Object value : values) {
+        if(value instanceof List<?> l) {
+          index = fillParameter(row, index, ps, l.get(row));
+        }
+        else {
+          index = fillParameter(row, index, ps, value);
+        }
+      }
+
+      if(batchSize > 1) {
+        ps.addBatch();
+      }
+    }
+
+    return batchSize > 1;
   }
 
-  private int fillParameter(int startIndex, PreparedStatement ps, Object value) throws SQLException {
+  private int fillParameter(int row, int startIndex, PreparedStatement ps, Object value) throws SQLException {
     int index = startIndex;
 
     switch(value) {
@@ -214,7 +278,7 @@ public class SafeSQL {
           String name = e.getName(i);
 
           if(!name.isEmpty()) {
-            index = fillParameter(index, ps, e.getValue(i));
+            index = fillParameter(row, index, ps, e.getValue(row, i));
           }
         }
       }
@@ -223,7 +287,7 @@ public class SafeSQL {
           String name = v.getName(i);
 
           if(!name.isEmpty()) {
-            index = fillParameter(index, ps, v.getValue(i));
+            index = fillParameter(row, index, ps, v.getValue(row, i));
           }
         }
       }
@@ -239,7 +303,7 @@ public class SafeSQL {
           case Record data -> {
             for(RecordComponent recordComponent : data.getClass().getRecordComponents()) {
               try {
-                index = fillParameter(index, ps, recordComponent.getAccessor().invoke(data));
+                index = fillParameter(row, index, ps, recordComponent.getAccessor().invoke(data));
               }
               catch(IllegalAccessException | InvocationTargetException ex) {
                 throw new IllegalStateException(ex);

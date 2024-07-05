@@ -5,6 +5,7 @@ import java.lang.invoke.MethodHandles.Lookup;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -67,6 +68,23 @@ public class DatabaseIT {
       database.query(tx ->
         assertThat(tx."SELECT COUNT(*) FROM company".asInt().get()).isEqualTo(0)
       );
+    }
+
+    @Test
+    void shouldDoBatchInsert() {
+      List<Company> companies = new ArrayList<>();
+
+      for(int i = 1; i <= 100; i++) {
+        companies.add(new Company(i, "Company #" + i, Instant.ofEpochSecond(i), 0.5, false));
+      }
+
+      database.accept(tx ->
+        tx."INSERT INTO company (\{ALL}) VALUES (\{ALL.batch(companies)})".execute()
+      );
+
+      List<Company> results = database.query(tx -> tx."SELECT \{ALL} FROM company ORDER BY id".map(ALL).toList());
+
+      assertThat(results).containsExactlyElementsOf(companies);
     }
 
     @Nested

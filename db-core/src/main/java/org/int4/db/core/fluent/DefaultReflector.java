@@ -8,7 +8,7 @@ import java.util.function.Function;
 
 import org.int4.db.core.util.ThrowingFunction;
 
-class DefaultReflector<T> extends DefaultExtractor<T> implements Reflector<T> {
+final class DefaultReflector<T> extends DefaultExtractor<T> implements Reflector<T> {
   private final Class<T> type;
   private final Function<Row, T> creator;
   private final List<IndexedMapping<T, Object>> mappings;     // Tree, with same number of leafs as fields

@@ -1,14 +1,17 @@
 package org.int4.db.core.fluent;
 
 import java.util.List;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public sealed abstract class FieldValueSetParameter {
   private final List<String> names;
-  private final Function<Integer, Object> dataSource;
+  private final int batchSze;
+  private final BiFunction<Integer, Integer, Object> dataSource;
 
-  FieldValueSetParameter(List<String> names, Function<Integer, Object> dataSource) {
+  FieldValueSetParameter(List<String> names, int batchSize, BiFunction<Integer, Integer, Object> dataSource) {
     this.names = List.copyOf(names);
+    this.batchSze = batchSize;
     this.dataSource = dataSource;
   }
 
@@ -20,12 +23,16 @@ public sealed abstract class FieldValueSetParameter {
     return names.size();
   }
 
+  public int batchSize() {
+    return batchSze;
+  }
+
   public String getName(int index) {
     return names.get(index);
   }
 
-  public Object getValue(int index) {
-    return dataSource.apply(index);
+  public Object getValue(int row, int index) {
+    return dataSource.apply(row, index);
   }
 
   @Override
@@ -35,13 +42,17 @@ public sealed abstract class FieldValueSetParameter {
 
   public static final class Values extends FieldValueSetParameter {
     Values(List<String> names, Function<Integer, Object> dataSource) {
-      super(names, dataSource);
+      super(names, 1, (row, index) -> dataSource.apply(index));
+    }
+
+    Values(List<String> names, int size, BiFunction<Integer, Integer, Object> dataSource) {
+      super(names, size, dataSource);
     }
   }
 
   public static final class Entries extends FieldValueSetParameter {
     Entries(List<String> names, Function<Integer, Object> dataSource) {
-      super(names, dataSource);
+      super(names, 1, (row, index) -> dataSource.apply(index));
     }
   }
 }

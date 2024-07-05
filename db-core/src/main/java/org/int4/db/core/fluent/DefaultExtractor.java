@@ -3,6 +3,7 @@ package org.int4.db.core.fluent;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
 
@@ -15,7 +16,7 @@ import org.int4.db.core.fluent.FieldValueSetParameter.Values;
  *
  * @param <T> the type being extracted from
  */
-class DefaultExtractor<T> implements Extractor<T> {
+sealed class DefaultExtractor<T> implements Extractor<T> permits DefaultReflector {
   private final List<String> names;
   private final BiFunction<T, Integer, Object> dataExtractor;
 
@@ -55,6 +56,15 @@ class DefaultExtractor<T> implements Extractor<T> {
   @Override
   public Values values(T t) {
     return new Values(names, index -> dataExtractor.apply(t, index));
+  }
+
+  @Override
+  public Values batch(List<T> batch) {
+    if(Objects.requireNonNull(batch, "batch").isEmpty()) {
+      throw new IllegalArgumentException("batch cannot be empty");
+    }
+
+    return new Values(names, batch.size(), (row, index) -> dataExtractor.apply(batch.get(row), index));
   }
 
   @Override
