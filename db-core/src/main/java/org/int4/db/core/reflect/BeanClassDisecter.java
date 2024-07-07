@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
-public class BeanClassDisecter {
+class BeanClassDisecter {
   record BeanClassDetails<T>(Function<Row, T> creator, List<Mapping<T, ?>> mappings) {}
 
   static <T> BeanClassDetails<T> disect(Lookup lookup, Class<T> cls) {

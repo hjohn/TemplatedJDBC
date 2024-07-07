@@ -7,9 +7,9 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import org.int4.db.core.fluent.Context;
-import org.int4.db.core.fluent.SQLResult;
 import org.int4.db.core.internal.SQLStatement;
+import org.int4.db.core.internal.bridge.Context;
+import org.int4.db.core.internal.bridge.SQLResult;
 import org.int4.db.core.reflect.Row;
 import org.int4.db.core.reflect.RowAccessException;
 import org.int4.db.core.util.ThrowingSupplier;

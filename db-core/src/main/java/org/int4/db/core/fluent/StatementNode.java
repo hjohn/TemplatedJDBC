@@ -1,5 +1,8 @@
 package org.int4.db.core.fluent;
 
+import org.int4.db.core.internal.bridge.Context;
+import org.int4.db.core.internal.bridge.SQLResult;
+
 /**
  * Fluent node for an SQL statement.
  *

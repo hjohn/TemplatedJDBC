@@ -18,7 +18,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.int4.db.core.fluent.SQLResult;
+import org.int4.db.core.internal.bridge.SQLResult;
 import org.int4.db.core.reflect.Extractor;
 import org.int4.db.core.reflect.Identifier;
 import org.int4.db.core.reflect.Row;

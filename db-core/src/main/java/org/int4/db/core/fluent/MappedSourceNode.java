@@ -5,6 +5,8 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import org.int4.db.core.internal.bridge.Context;
+import org.int4.db.core.internal.bridge.SQLResult;
 import org.int4.db.core.reflect.Row;
 
 /**

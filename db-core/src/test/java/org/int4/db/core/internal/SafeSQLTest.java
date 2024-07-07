@@ -15,7 +15,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.int4.db.core.fluent.SQLResult;
+import org.int4.db.core.internal.bridge.SQLResult;
 import org.int4.db.core.reflect.Extractor;
 import org.int4.db.core.reflect.Identifier;
 import org.int4.db.core.reflect.Reflector;

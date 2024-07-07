@@ -1,4 +1,4 @@
-package org.int4.db.core.fluent;
+package org.int4.db.core.internal.bridge;
 
 import java.util.Iterator;
 import java.util.function.Consumer;

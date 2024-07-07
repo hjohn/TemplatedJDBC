@@ -3,7 +3,7 @@ package org.int4.db.core.reflect;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-public interface NameTranslator {
+interface NameTranslator {
   static final NameTranslator UNDERSCORED = new NameTranslator() {
     private static final Pattern PATTERN = Pattern.compile("(?<!^)(?=[A-Z](?![A-Z]|$))|(?<=[a-z])(?![a-z]|$)");
 
