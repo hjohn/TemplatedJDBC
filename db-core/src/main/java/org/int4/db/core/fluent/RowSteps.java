@@ -8,7 +8,7 @@ import org.int4.db.core.reflect.Row;
  *
  * @param <X> the type of exception that can be thrown
  */
-public interface RowSteps<X extends Exception> extends MappingSteps<Row, X> {
+interface RowSteps<X extends Exception> extends MappingSteps<Row, X> {
 
   /**
    * A mapper which converts the result to a {@link String} obtained
@@ -37,36 +37,36 @@ public interface RowSteps<X extends Exception> extends MappingSteps<Row, X> {
   /**
    * Converts the first column of the result to a {@link String}.
    *
-   * @return a new intermediate step, never {@code null}
+   * @return a {@link MappedSourceNode}, never {@code null}
    */
-  default ExecutionStep<String, X> asString() {
+  default MappedSourceNode<String, X> asString() {
     return map(TEXT_MAPPER);
   }
 
   /**
    * Converts the first column of the result to an {@link Integer}.
    *
-   * @return a new intermediate step, never {@code null}
+   * @return a {@link MappedSourceNode}, never {@code null}
    */
-  default ExecutionStep<Integer, X> asInt() {
+  default MappedSourceNode<Integer, X> asInt() {
     return map(INT_MAPPER);
   }
 
   /**
    * Converts the first column of the result to a {@link Long}.
    *
-   * @return a new intermediate step, never {@code null}
+   * @return a {@link MappedSourceNode}, never {@code null}
    */
-  default ExecutionStep<Long, X> asLong() {
+  default MappedSourceNode<Long, X> asLong() {
     return map(LONG_MAPPER);
   }
 
   /**
    * Converts the first column of the result to a byte array.
    *
-   * @return a new intermediate step, never {@code null}
+   * @return a {@link MappedSourceNode}, never {@code null}
    */
-  default ExecutionStep<byte[], X> asBytes() {
+  default MappedSourceNode<byte[], X> asBytes() {
     return map(BYTES_MAPPER);
   }
 }

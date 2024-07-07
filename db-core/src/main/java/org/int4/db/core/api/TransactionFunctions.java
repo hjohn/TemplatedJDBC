@@ -3,9 +3,9 @@ package org.int4.db.core.api;
 import java.lang.StringTemplate.Processor;
 import java.util.function.Consumer;
 
-import org.int4.db.core.fluent.StatementExecutor;
+import org.int4.db.core.fluent.StatementNode;
 
-public interface TransactionFunctions<X extends Exception> extends AutoCloseable, Processor<StatementExecutor<X>, X> {
+interface TransactionFunctions<X extends Exception> extends AutoCloseable, Processor<StatementNode<X>, X> {
 
   /**
    * Commits this transaction immediately. Any further attempts to use this transaction

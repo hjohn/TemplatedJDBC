@@ -8,7 +8,7 @@ import org.int4.db.core.api.Database;
 import org.int4.db.core.api.DatabaseException;
 import org.int4.db.core.api.Transaction;
 import org.int4.db.core.api.TransactionResult;
-import org.int4.db.core.fluent.StatementExecutor;
+import org.int4.db.core.fluent.StatementNode;
 import org.int4.db.core.internal.SafeSQL;
 
 /**
@@ -53,8 +53,8 @@ public class MockDatabase extends AbstractMockDatabase<DatabaseException> implem
     }
 
     @Override
-    public StatementExecutor<DatabaseException> process(StringTemplate stringTemplate) throws DatabaseException {
-      return new StatementExecutor<>(createContext(new SafeSQL(stringTemplate, Map.of())));
+    public StatementNode<DatabaseException> process(StringTemplate stringTemplate) throws DatabaseException {
+      return new StatementNode<>(createContext(new SafeSQL(stringTemplate, Map.of())));
     }
   }
 }

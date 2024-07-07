@@ -7,22 +7,28 @@ import java.util.function.Function;
 
 import org.int4.db.core.reflect.Row;
 
-public class ExecutionStep<T, X extends Exception> implements MappingSteps<T, X>, TerminalMappingSteps<T, X> {
+/**
+ * Fluent node for a source of a mapped type {@code T}.
+ *
+ * @param <T> the mapped type
+ * @param <X> the exception type that can be thrown
+ */
+public class MappedSourceNode<T, X extends Exception> implements MappingSteps<T, X> {
   private final Context<X> context;
   private final Function<SQLResult, Iterator<Row>> step;
   private final Function<Row, T> flatStep;
 
-  ExecutionStep(Context<X> context, Function<SQLResult, Iterator<Row>> step, Function<Row, T> flatStep) {
+  MappedSourceNode(Context<X> context, Function<SQLResult, Iterator<Row>> step, Function<Row, T> flatStep) {
     this.context = context;
     this.step = step;
     this.flatStep = flatStep;
   }
 
   @Override
-  public <U> ExecutionStep<U, X> map(Function<T, U> mapper) {
+  public <U> MappedSourceNode<U, X> map(Function<T, U> mapper) {
     Objects.requireNonNull(mapper, "mapper");
 
-    return new ExecutionStep<>(context, step, r -> mapper.apply(flatStep.apply(r)));
+    return new MappedSourceNode<>(context, step, r -> mapper.apply(flatStep.apply(r)));
   }
 
   @Override

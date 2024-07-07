@@ -7,7 +7,7 @@ import java.util.function.Consumer;
 import org.int4.db.core.api.CheckedDatabase;
 import org.int4.db.core.api.CheckedTransaction;
 import org.int4.db.core.api.TransactionResult;
-import org.int4.db.core.fluent.StatementExecutor;
+import org.int4.db.core.fluent.StatementNode;
 import org.int4.db.core.internal.SafeSQL;
 
 /**
@@ -52,8 +52,8 @@ public class MockCheckedDatabase extends AbstractMockDatabase<SQLException> impl
     }
 
     @Override
-    public StatementExecutor<SQLException> process(StringTemplate stringTemplate) {
-      return new StatementExecutor<>(createContext(new SafeSQL(stringTemplate, Map.of())));
+    public StatementNode<SQLException> process(StringTemplate stringTemplate) {
+      return new StatementNode<>(createContext(new SafeSQL(stringTemplate, Map.of())));
     }
   }
 }

@@ -6,7 +6,7 @@ import java.util.Objects;
 import org.int4.db.core.util.ThrowingConsumer;
 import org.int4.db.core.util.ThrowingFunction;
 
-public interface DatabaseFunctions<T extends TransactionFunctions<X>, X extends Exception> {
+interface DatabaseFunctions<T extends TransactionFunctions<X>, X extends Exception> {
 
   /**
    * Starts a read/write transaction.

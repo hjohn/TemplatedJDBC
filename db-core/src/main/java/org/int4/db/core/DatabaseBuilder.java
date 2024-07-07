@@ -18,7 +18,7 @@ import org.int4.db.core.api.Database;
 import org.int4.db.core.api.DatabaseException;
 import org.int4.db.core.api.RetryStrategy;
 import org.int4.db.core.api.Transaction;
-import org.int4.db.core.fluent.StatementExecutor;
+import org.int4.db.core.fluent.StatementNode;
 import org.int4.db.core.internal.BaseTransaction;
 import org.int4.db.core.internal.SQLStatement;
 import org.int4.db.core.internal.SafeSQL;
@@ -152,10 +152,10 @@ public class DatabaseBuilder {
       }
 
       @Override
-      public StatementExecutor<DatabaseException> process(StringTemplate stringTemplate) throws DatabaseException {
+      public StatementNode<DatabaseException> process(StringTemplate stringTemplate) throws DatabaseException {
         SafeSQL sql = new SafeSQL(stringTemplate, typeConverters);
 
-        return new StatementExecutor<>(new DefaultContext<>(
+        return new StatementNode<>(new DefaultContext<>(
             () -> createSQLStatement(this, sql),
             (message, cause) -> new DatabaseException(this + ": " + message, cause)
         ));
@@ -221,10 +221,10 @@ public class DatabaseBuilder {
       }
 
       @Override
-      public StatementExecutor<SQLException> process(StringTemplate stringTemplate) throws DatabaseException {
+      public StatementNode<SQLException> process(StringTemplate stringTemplate) throws DatabaseException {
         SafeSQL sql = new SafeSQL(stringTemplate, typeConverters);
 
-        return new StatementExecutor<>(new DefaultContext<>(
+        return new StatementNode<>(new DefaultContext<>(
             () -> createSQLStatement(sql),
             (message, cause) -> new SQLExceptionWrapper(this + ": " + message, cause)
         ));

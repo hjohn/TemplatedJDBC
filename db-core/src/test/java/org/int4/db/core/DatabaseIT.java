@@ -120,6 +120,29 @@ public class DatabaseIT {
           Row.of(company1.id, company1.name, Timestamp.from(company1.foundingTime), company1.genderRatio, company1.royal)
         );
       }
+
+// Commented out, seems to be some bug in java compiler
+//      @Test
+//      void selectShouldConsumeRawRecords() {
+//        List<Row> consumedRows = new ArrayList<>();
+//
+//        database.query(tx -> {
+//          StatementNode<DatabaseException> sn = tx."SELECT \{ALL} FROM company ORDER BY name DESC";
+//
+//          sn.consume(row -> {
+//            consumedRows.add(
+//              Row.of(new Object[] {row.getObject(0), row.getObject(1), row.getObject(2), row.getObject(3), row.getObject(4)})
+//            );
+//          });
+//
+//          return true;  // TODO Shouldn't be needed when consuming directly!
+//        });
+//
+//        assertThat(consumedRows).containsExactly(
+//          Row.of(company2.id, company2.name, Timestamp.from(company2.foundingTime), company2.genderRatio, company2.royal),
+//          Row.of(company1.id, company1.name, Timestamp.from(company1.foundingTime), company1.genderRatio, company1.royal)
+//        );
+//      }
     }
   }
 
@@ -130,6 +153,9 @@ public class DatabaseIT {
       .inline("other_data", Reflector.of(LOOKUP, OtherData.class))
       .withNames("id", "name", "age", "data");
     private static final Extractor<Employee> EXCEPT_ID = ALL.excluding("id");
+
+    private final Employee employeeJane = new Employee(null, "Jane Doe", 43, new byte[] {1, 2, 3});
+    private final Employee employeeJohn = new Employee(null, "John Doe", 32, new byte[] {3, 4, 5});
 
     @BeforeEach
     void beforeEach() {
@@ -146,10 +172,24 @@ public class DatabaseIT {
       }
     }
 
+    @Test
+    void insertShouldReturnGeneratedKeyRows() {
+      database.accept(tx -> {
+        assertThat(tx."INSERT INTO employee (\{EXCEPT_ID}) VALUES (\{EXCEPT_ID.values(employeeJohn)}) RETURNING id".mapGeneratedKeys().toList())
+          .containsExactly(Row.of(1));
+      });
+    }
+
+    @Test
+    void batchInsertShouldReturnGeneratedKeyRows() {
+      database.accept(tx -> {
+        assertThat(tx."INSERT INTO employee (\{EXCEPT_ID}) VALUES (\{EXCEPT_ID.batch(employeeJohn, employeeJane)}) RETURNING id".mapGeneratedKeys().toList())
+          .containsExactly(Row.of(1), Row.of(2));
+      });
+    }
+
     @Nested
     class AndEmployeesWereAdded {
-      private final Employee employeeJane = new Employee(null, "Jane Doe", 43, new byte[] {1, 2, 3});
-      private final Employee employeeJohn = new Employee(null, "John Doe", 32, new byte[] {3, 4, 5});
 
       @BeforeEach
       void beforeEach() {
