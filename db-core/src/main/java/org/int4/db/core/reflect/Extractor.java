@@ -1,5 +1,6 @@
 package org.int4.db.core.reflect;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.int4.db.core.reflect.FieldValueSetParameter.Entries;
@@ -50,6 +51,20 @@ public sealed interface Extractor<T> permits Reflector, DefaultExtractor {
    * @throws IllegalArgumentException when {@code batch} is empty
    */
   Values batch(List<T> batch);
+
+  /**
+   * Given an array of type {@code T}, provides a template parameter that inserts
+   * its values comma separated, suitable for the INSERT statement's VALUES clause.
+   * The statement will be executed as a batch.
+   *
+   * @param batch an array of type {@code T}, cannot be {@code null}
+   * @return a values template parameter, never {@code null}
+   * @throws NullPointerException when {@code batch} is {@code null}
+   * @throws IllegalArgumentException when {@code batch} is empty
+   */
+  default Values batch(@SuppressWarnings("unchecked") T... batch) {
+    return batch(Arrays.asList(batch));
+  }
 
   /**
    * Creates a new extractor based on this one, but excluding the given
