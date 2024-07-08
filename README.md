@@ -31,7 +31,7 @@ Add this dependency to your `pom.xml`.
 <dependency>
     <groupId>org.int4.db</groupId>
     <artifactId>db-core</artifactId>
-    <version>0.0.3</version>
+    <version>0.1.0</version>
 </dependency>
 ```
 
