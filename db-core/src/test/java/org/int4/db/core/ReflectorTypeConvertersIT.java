@@ -20,12 +20,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.zonky.test.db.postgres.junit5.EmbeddedPostgresExtension;
 import io.zonky.test.db.postgres.junit5.PreparedDbExtension;
 
-public class TypeConvertersIT {
+public class ReflectorTypeConvertersIT {
   @RegisterExtension
   private static final PreparedDbExtension POSTGRES = EmbeddedPostgresExtension.preparedDatabase(ds -> {});
   private static final Lookup LOOKUP = MethodHandles.lookup();
+  private static final TypeConverter<State, Integer> THROWING_CONVERTER = TypeConverter.of(
+    Integer.class,
+    x -> { throw new UnsupportedOperationException(); },
+    x -> { throw new UnsupportedOperationException(); }
+  );
 
   private Database database;
+
 
   @BeforeEach
   void beforeEach() throws SQLException {
@@ -40,13 +46,14 @@ public class TypeConvertersIT {
           throw new IllegalStateException(e);
         }
       })
-      .addTypeConverter(Custom.class, TypeConverter.of(String.class, Custom::value, Custom::new))
-      .addTypeConverter(Instant.class, TypeConverter.of(Timestamp.class, Timestamp::from, Timestamp::toInstant))
-      .addTypeConverter(State.class, TypeConverter.of(Integer.class, State::ordinal, i -> State.values()[i]))
+      .addTypeConverter(State.class, THROWING_CONVERTER)  // Ensures that database converter is overridden by reflector one
       .build();
   }
 
-  private static final Reflector<Company> ALL = Reflector.of(LOOKUP, Company.class);
+  private static final Reflector<Company> ALL = Reflector.of(LOOKUP, Company.class)
+    .addTypeConverter(Custom.class, TypeConverter.of(String.class, Custom::value, Custom::new))
+    .addTypeConverter(Instant.class, TypeConverter.of(Timestamp.class, Timestamp::from, Timestamp::toInstant))
+    .addTypeConverter(State.class, TypeConverter.of(Integer.class, State::ordinal, i -> State.values()[i]));
 
   private enum Type {NON_PROFIT, CORPORATE}
   private enum State {STARTUP, ESTABLISHED}

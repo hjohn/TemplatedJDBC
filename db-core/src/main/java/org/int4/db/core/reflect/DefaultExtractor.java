@@ -1,14 +1,10 @@
 package org.int4.db.core.reflect;
 
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
-import java.util.function.BiFunction;
 
-import org.int4.db.core.reflect.FieldValueSetParameter.Entries;
-import org.int4.db.core.reflect.FieldValueSetParameter.Values;
+import org.int4.db.core.util.ColumnExtractor;
 
 /**
  * Provides template parameters providing field and field/value
@@ -16,13 +12,13 @@ import org.int4.db.core.reflect.FieldValueSetParameter.Values;
  *
  * @param <T> the type being extracted from
  */
-sealed class DefaultExtractor<T> implements Extractor<T> permits DefaultReflector {
+final class DefaultExtractor<T> implements Extractor<T> {
   private final List<String> names;
-  private final BiFunction<T, Integer, Object> dataExtractor;
+  private final ColumnExtractor<T> columnExtractor;
 
-  DefaultExtractor(List<String> names, BiFunction<T, Integer, Object> dataExtractor) {
+  DefaultExtractor(List<String> names, ColumnExtractor<T> columnExtractor) {
     this.names = List.copyOf(names);
-    this.dataExtractor = dataExtractor;
+    this.columnExtractor = columnExtractor;
 
     Set<String> uniqueNames = new HashSet<>();
 
@@ -39,56 +35,13 @@ sealed class DefaultExtractor<T> implements Extractor<T> permits DefaultReflecto
   }
 
   @Override
-  public Object extractObject(T t, int columnIndex) {
-    return dataExtractor.apply(t, columnIndex);
-  }
-
-  @Override
   public List<String> names() {
     return names;
   }
 
   @Override
-  public Entries entries(T t) {
-    return new Entries(names, index -> dataExtractor.apply(t, index));
-  }
-
-  @Override
-  public Values values(T t) {
-    return new Values(names, index -> dataExtractor.apply(t, index));
-  }
-
-  @Override
-  public Values batch(List<T> batch) {
-    if(Objects.requireNonNull(batch, "batch").isEmpty()) {
-      throw new IllegalArgumentException("batch cannot be empty");
-    }
-
-    return new Values(names, batch.size(), (row, index) -> dataExtractor.apply(batch.get(row), index));
-  }
-
-  @Override
-  public Extractor<T> excluding(String... names) {
-    Set<String> set = new LinkedHashSet<>(List.of(names));
-    Extractor<T> extractor = new DefaultExtractor<>(this.names.stream().map(n -> set.remove(n) ? "" : n).toList(), dataExtractor);
-
-    if(!set.isEmpty()) {
-      throw new IllegalArgumentException("unable to exclude non-existing fields: " + set + ", available are: " + this.names);
-    }
-
-    return extractor;
-  }
-
-  @Override
-  public Extractor<T> only(String... names) {
-    Set<String> set = new LinkedHashSet<>(List.of(names));
-    Extractor<T> extractor = new DefaultExtractor<>(this.names.stream().map(n -> set.remove(n) ? n : "").toList(), dataExtractor);
-
-    if(!set.isEmpty()) {
-      throw new IllegalArgumentException("unable to keep non-existing fields: " + set);
-    }
-
-    return extractor;
+  public ColumnExtractor<T> columnExtractor() {
+    return columnExtractor;
   }
 
   @Override

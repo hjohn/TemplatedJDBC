@@ -1,10 +1,14 @@
 package org.int4.db.core.reflect;
 
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 import org.int4.db.core.reflect.FieldValueSetParameter.Entries;
 import org.int4.db.core.reflect.FieldValueSetParameter.Values;
+import org.int4.db.core.util.ColumnExtractor;
 
 /**
  * Provides template parameters providing field and field/value
@@ -23,13 +27,22 @@ public sealed interface Extractor<T> permits Reflector, DefaultExtractor {
   List<String> names();
 
   /**
+   * Returns the used {@link ColumnExtractor}.
+   *
+   * @return the used {@link ColumnExtractor}, never {@code null}
+   */
+  ColumnExtractor<T> columnExtractor();
+
+  /**
    * Given a type {@code T}, provides a template parameter that inserts its fields
    * comma separated in the form of "field = value" suitable for UPDATE statements.
    *
    * @param t a type {@code T}, cannot be {@code null}
    * @return an entries template parameter, never {@code null}
    */
-  Entries entries(T t);
+  default Entries entries(T t) {
+    return new Entries(names(), index -> columnExtractor().extract(t, index));
+  }
 
   /**
    * Given a type {@code T}, provides a template parameter that inserts its values
@@ -38,7 +51,9 @@ public sealed interface Extractor<T> permits Reflector, DefaultExtractor {
    * @param t a type {@code T}, cannot be {@code null}
    * @return a values template parameter, never {@code null}
    */
-  Values values(T t);
+  default Values values(T t) {
+    return new Values(names(), index -> columnExtractor().extract(t, index));
+  }
 
   /**
    * Given a list of type {@code T}, provides a template parameter that inserts
@@ -50,7 +65,13 @@ public sealed interface Extractor<T> permits Reflector, DefaultExtractor {
    * @throws NullPointerException when {@code batch} is {@code null}
    * @throws IllegalArgumentException when {@code batch} is empty
    */
-  Values batch(List<T> batch);
+  default Values batch(List<T> batch) {
+    if(Objects.requireNonNull(batch, "batch").isEmpty()) {
+      throw new IllegalArgumentException("batch cannot be empty");
+    }
+
+    return new Values(names(), batch.size(), (rowIndex, columnIndex) -> columnExtractor().extract(batch.get(rowIndex), columnIndex));
+  }
 
   /**
    * Given an array of type {@code T}, provides a template parameter that inserts
@@ -74,7 +95,16 @@ public sealed interface Extractor<T> permits Reflector, DefaultExtractor {
    * @return a new extractor minus the given names, never {@code null}
    * @throws IllegalArgumentException when one or more names are missing
    */
-  Extractor<T> excluding(String... names);
+  default Extractor<T> excluding(String... names) {
+    Set<String> set = new LinkedHashSet<>(List.of(names));
+    Extractor<T> extractor = new DefaultExtractor<>(this.names().stream().map(n -> set.remove(n) ? "" : n).toList(), columnExtractor());
+
+    if(!set.isEmpty()) {
+      throw new IllegalArgumentException("unable to exclude non-existing fields: " + set + ", available are: " + this.names());
+    }
+
+    return extractor;
+  }
 
   /**
    * Creates a new extractor based on this one, but keeping only the
@@ -84,15 +114,14 @@ public sealed interface Extractor<T> permits Reflector, DefaultExtractor {
    * @return a new extractor with only the given names, never {@code null}
    * @throws IllegalArgumentException when one or more names are missing
    */
-  Extractor<T> only(String... names);
+  default Extractor<T> only(String... names) {
+    Set<String> set = new LinkedHashSet<>(List.of(names));
+    Extractor<T> extractor = new DefaultExtractor<>(this.names().stream().map(n -> set.remove(n) ? n : "").toList(), columnExtractor());
 
-  /**
-   * Extracts the object at the given column index from the given type
-   * {@code T}.
-   *
-   * @param t an instance of type {@code T}, cannot be {@code null}
-   * @param columnIndex a column index, cannot be negative
-   * @return the object at the given column index, can be {@code null}
-   */
-  Object extractObject(T t, int columnIndex);
+    if(!set.isEmpty()) {
+      throw new IllegalArgumentException("unable to keep non-existing fields: " + set);
+    }
+
+    return extractor;
+  }
 }

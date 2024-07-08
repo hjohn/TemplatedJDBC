@@ -2,23 +2,51 @@ package org.int4.db.core.reflect;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 
+import org.int4.db.core.util.ColumnExtractor;
 import org.int4.db.core.util.ThrowingFunction;
 
-final class DefaultReflector<T> extends DefaultExtractor<T> implements Reflector<T> {
+final class DefaultReflector<T> implements Reflector<T> {
+  private final List<String> names;
+  private final ColumnExtractor<T> columnExtractor;
   private final Class<T> type;
   private final Function<Row, T> creator;
   private final List<IndexedMapping<T, Object>> mappings;     // Tree, with same number of leafs as fields
+  private final Map<Class<?>, TypeConverter<?, ?>> typeConverters;
 
-  DefaultReflector(Class<T> type, Function<Row, T> creator, List<IndexedMapping<T, Object>> mappings) {
-    super(extractNames(Objects.requireNonNull(mappings, "mappings")), (obj, columnIndex) -> extract(mappings, obj, columnIndex));
+  DefaultReflector(Class<T> type, Function<Row, T> creator, List<IndexedMapping<T, Object>> mappings, Map<Class<?>, TypeConverter<?, ?>> typeConverters) {
+    this.names = extractNames(Objects.requireNonNull(mappings, "mappings"));
+    this.columnExtractor = (obj, columnIndex) -> extract(obj, columnIndex);
 
     this.type = Objects.requireNonNull(type, "type");
     this.creator = Objects.requireNonNull(creator, "creator");
     this.mappings = List.copyOf(mappings);
+    this.typeConverters = Map.copyOf(typeConverters);
+
+    Set<String> uniqueNames = new HashSet<>();
+
+    for(String name : names) {
+      if(!uniqueNames.add(name)) {
+        throw new IllegalArgumentException("names cannot contain duplicate names, but found duplicate: " + name + " in: " + names);
+      }
+    }
+  }
+
+  @Override
+  public List<String> names() {
+    return names;
+  }
+
+  @Override
+  public ColumnExtractor<T> columnExtractor() {
+    return columnExtractor;
   }
 
   @Override
@@ -28,7 +56,7 @@ final class DefaultReflector<T> extends DefaultExtractor<T> implements Reflector
 
   @Override
   public T instantiate(Row row, int offset) {
-    return creator.apply(new RowAdapter<>(row, mappings, offset));
+    return creator.apply(new RowAdapter(row, offset));
   }
 
   @Override
@@ -63,7 +91,7 @@ final class DefaultReflector<T> extends DefaultExtractor<T> implements Reflector
       fieldIndex += newMapping.columnCount();
     }
 
-    return new DefaultReflector<>(type, creator, newMappings);
+    return new DefaultReflector<>(type, creator, newMappings, typeConverters);
   }
 
   @Override
@@ -84,7 +112,7 @@ final class DefaultReflector<T> extends DefaultExtractor<T> implements Reflector
 
   @Override
   public Reflector<T> prefix(String prefix) {
-    return new DefaultReflector<>(type, creator, mappings.stream().map(m -> m.prefix(prefix)).toList());
+    return new DefaultReflector<>(type, creator, mappings.stream().map(m -> m.prefix(prefix)).toList(), typeConverters);
   }
 
   private static <T, F> int columnIndexToMappingIndex(List<IndexedMapping<T, F>> mappings, int columnIndex) {
@@ -125,23 +153,43 @@ final class DefaultReflector<T> extends DefaultExtractor<T> implements Reflector
     newMappings.add(new IndexedMapping<>(index, Mapping.inline(mapping.extractor(), castSubReflector)));
     newMappings.addAll(mappings.subList(mappingIndex + 1, mappings.size()).stream().map(m -> new IndexedMapping<>(m.columnIndex + shift, m.mapping)).toList());
 
-    return new DefaultReflector<>(
-      type,
-      creator,
-      newMappings
-    );
+    return new DefaultReflector<>(type, creator, newMappings, typeConverters);
+  }
+
+  @Override
+  public <V> Reflector<T> addTypeConverter(Class<V> javaType, TypeConverter<V, ?> typeConverter) {
+    Map<Class<?>, TypeConverter<?, ?>> map = new HashMap<>(typeConverters);
+
+    map.put(javaType, typeConverter);
+
+    return new DefaultReflector<>(type, creator, mappings, map);
   }
 
   private static <T, F> List<String> extractNames(List<IndexedMapping<T, F>> mappings) {
     return mappings.stream().flatMap(m -> m.names().stream()).toList();
   }
 
-  private static <T> Object extract(List<IndexedMapping<T, Object>> mappings, T obj, int columnIndex) {
+  private Object extract(T obj, int columnIndex) {
     try {
       IndexedMapping<T, Object> mapping = mappings.get(columnIndexToMappingIndex(mappings, columnIndex));
       Object result = mapping.extractor().apply(obj);
 
-      return mapping.mapping instanceof Mapping.Inline<T, Object> i ? i.reflector().extractObject(result, columnIndex - mapping.columnIndex) : result;
+      if(mapping.mapping instanceof Mapping.Inline<T, Object> i) {
+        return i.reflector().columnExtractor().extract(result, columnIndex - mapping.columnIndex);
+      }
+
+      if(result == null) {
+        return null;
+      }
+
+      @SuppressWarnings("unchecked")
+      TypeConverter<Object, T> typeConverter = (TypeConverter<Object, T>)typeConverters.get(mapping.type());
+
+      if(typeConverter != null) {
+        return typeConverter.encode(result);
+      }
+
+      return result;
     }
     catch(Throwable e) {
       throw new IllegalStateException("Unable to access component " + columnIndex + " of " + obj, e);
@@ -178,26 +226,24 @@ final class DefaultReflector<T> extends DefaultExtractor<T> implements Reflector
   }
 
   // TODO RowAdapters wrap every Row, but if the Row instance is the same (which happens with DynamicRow) these could be cached
-  private static class RowAdapter<T> implements Row {
-    private final List<IndexedMapping<T, Object>> indexedMappings;
+  private class RowAdapter implements Row {
     private final Row row;
     private final int offset;
 
-    RowAdapter(Row row, List<IndexedMapping<T, Object>> mappings, int offset) {
+    RowAdapter(Row row, int offset) {
       this.row = row;
-      this.indexedMappings = mappings;
       this.offset = offset;
     }
 
     private int map(int columnIndex) {
-      Objects.checkIndex(columnIndex, indexedMappings.size());
+      Objects.checkIndex(columnIndex, mappings.size());
 
-      return indexedMappings.get(columnIndex).columnIndex + offset;
+      return mappings.get(columnIndex).columnIndex + offset;
     }
 
     @Override
     public int getColumnCount() {
-      return indexedMappings.size();
+      return mappings.size();
     }
 
     @Override
@@ -212,20 +258,27 @@ final class DefaultReflector<T> extends DefaultExtractor<T> implements Reflector
 
     @Override
     public Object getObject(int columnIndex) {
-      IndexedMapping<T, ?> indexedMapping = indexedMappings.get(columnIndex);
-
-      return indexedMapping.mapping instanceof Mapping.Inline i ? i.reflector().instantiate(row, offset + indexedMapping.columnIndex) : row.getObject(map(columnIndex));
+      return getObject(columnIndex, Object.class);
     }
 
     @Override
     public <F> F getObject(int columnIndex, Class<F> type) {
-      IndexedMapping<T, ?> indexedMapping = indexedMappings.get(columnIndex);
+      IndexedMapping<T, ?> indexedMapping = mappings.get(columnIndex);
 
       if(indexedMapping.mapping instanceof Mapping.Inline i) {
         @SuppressWarnings("unchecked")
         F t = (F)i.reflector().instantiate(row, offset + indexedMapping.columnIndex);
 
         return t;
+      }
+
+      @SuppressWarnings("unchecked")
+      TypeConverter<F, Object> typeConverter = (TypeConverter<F, Object>)typeConverters.get(indexedMapping.type());
+
+      if(typeConverter != null) {
+        Object result = row.getObject(map(columnIndex));
+
+        return result == null ? null : typeConverter.decode(result);
       }
 
       return row.getObject(map(columnIndex), type);
@@ -253,7 +306,7 @@ final class DefaultReflector<T> extends DefaultExtractor<T> implements Reflector
 
     @Override
     public String toString() {
-      return "RowAdapter[" + row.toString() + ", mappings = " + indexedMappings + "]";
+      return "RowAdapter[" + row.toString() + ", mappings = " + mappings + "]";
     }
   }
 }

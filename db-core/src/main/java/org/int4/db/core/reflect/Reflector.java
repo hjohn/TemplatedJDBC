@@ -4,6 +4,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
@@ -118,7 +119,7 @@ public sealed interface Reflector<T> extends Extractor<T>, Mapper<T> permits Def
       columnIndex += mapping.columnCount();
     }
 
-    return new DefaultReflector<>(type, Objects.requireNonNull(creator, "creator"), indexedMappings);
+    return new DefaultReflector<>(type, Objects.requireNonNull(creator, "creator"), indexedMappings, Map.of());
   }
 
   /**
@@ -192,4 +193,15 @@ public sealed interface Reflector<T> extends Extractor<T>, Mapper<T> permits Def
    * @throws NullPointerException when any argument is {@code null}
    */
   Reflector<T> nest(String name, Reflector<?> reflector);
+
+  /**
+   * Adds a type converter to this reflector for the given Java type.
+   *
+   * @param <V> a Java type
+   * @param javaType a class representing a Java type, cannot be {@code null}
+   * @param typeConverter a type converter, cannot be {@code null}
+   * @return a new reflector, never {@code null}
+   * @throws NullPointerException when any argument is {@code null}
+   */
+  <V> Reflector<T> addTypeConverter(Class<V> javaType, TypeConverter<V, ?> typeConverter);
 }
