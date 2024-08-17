@@ -71,7 +71,7 @@ class DynamicRow implements Row {
         return type.cast(enumValue);
       }
 
-      return type.cast(rs.getObject(columnIndex + 1, type));
+      return rs.getObject(columnIndex + 1, type);
     }
     catch(SQLException e) {
       throw new RowAccessException(e);
