@@ -14,10 +14,6 @@ class RecordDisecter {
 
   private static final Map<Class<?>, BiFunction<Row, Integer, ?>> MAP = Map.of(
     String.class, Row::getString,
-    Boolean.class, Row::getBoolean,
-    Integer.class, Row::getInt,
-    Long.class, Row::getLong,
-    Double.class, Row::getDouble,
     boolean.class, Row::getBoolean,
     int.class, Row::getInt,
     long.class, Row::getLong,

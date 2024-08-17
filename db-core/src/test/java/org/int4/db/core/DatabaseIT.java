@@ -240,7 +240,7 @@ public class DatabaseIT {
 
       @Nested
       class AndAnEmployeeWasUpdated {
-        private final Employee employeeAlice = new Employee(null, "Alice Brooks", 51, new byte[] {5, 6, 7});
+        private final Employee employeeAlice = new Employee(null, "Alice Brooks", null, new byte[] {5, 6, 7});
 
         @BeforeEach
         void beforeEach() {
@@ -263,7 +263,7 @@ public class DatabaseIT {
   }
 
   private record NameOnly(String name) {}
-  private record Employee(Integer id, String name, int age, byte[] data) {
+  private record Employee(Integer id, String name, Integer age, byte[] data) {
     public Employee withId(int id) {
       return new Employee(id, name, age, data);
     }

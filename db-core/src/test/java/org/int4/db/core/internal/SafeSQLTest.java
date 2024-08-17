@@ -52,7 +52,7 @@ public class SafeSQLTest {
   void shouldCreatePreparedStatement(@Mock Connection connection, @Mock PreparedStatement preparedStatement) throws SQLException {
     Reflector<Employee> all = Reflector.of(LOOKUP, Employee.class);
     Extractor<Employee> nameOnly = all.only("name");
-    Employee employee = new Employee("John", null, LocalDate.of(1234, 5, 6), 42.42, true, Gender.M);
+    Employee employee = new Employee("John", null, LocalDate.of(1234, 5, 6), 42.42, 31, true, Gender.M);
     boolean overtime = false;
 
     StringTemplate template = RAW."""
@@ -69,7 +69,7 @@ public class SafeSQLTest {
 
     assertThat(sqlCaptor.getValue()).isEqualTo("""
       INSERT INTO employees (name) VALUES (?);
-      INSERT INTO employees (name, middle_name, birth_date, salary, overtime, gender) VALUES (?, ?, ?, ?, ?, ?);
+      INSERT INTO employees (name, middle_name, birth_date, salary, age, overtime, gender) VALUES (?, ?, ?, ?, ?, ?, ?);
       SELECT * FROM employees WHERE overtime = ? AND name = ?
     """);
 
@@ -78,14 +78,15 @@ public class SafeSQLTest {
     verify(preparedStatement).setNull(3, Types.NULL);
     verify(preparedStatement).setObject(4, Date.valueOf(LocalDate.of(1234, 5, 6)));
     verify(preparedStatement).setObject(5, 42.42);
-    verify(preparedStatement).setObject(6, true);
-    verify(preparedStatement).setString(7, "M");
-    verify(preparedStatement).setObject(8, false);
-    verify(preparedStatement).setObject(9, "John");
+    verify(preparedStatement).setObject(6, 31);
+    verify(preparedStatement).setObject(7, true);
+    verify(preparedStatement).setString(8, "M");
+    verify(preparedStatement).setObject(9, false);
+    verify(preparedStatement).setObject(10, "John");
 
     assertThat(statement.toString()).isEqualTo("""
       INSERT INTO employees (name) VALUES (?);
-      INSERT INTO employees (name, middle_name, birth_date, salary, overtime, gender) VALUES (?, ?, ?, ?, ?, ?);
+      INSERT INTO employees (name, middle_name, birth_date, salary, age, overtime, gender) VALUES (?, ?, ?, ?, ?, ?, ?);
       SELECT * FROM employees WHERE overtime = ? AND name = ?
     """);
   }
@@ -100,11 +101,11 @@ public class SafeSQLTest {
 
     SQLStatement statement = sql.toSQLStatement(connection);
 
-    assertThat(sqlCaptor.getValue()).isEqualTo("SELECT e.name, e.middle_name, e.birth_date, e.salary, e.overtime, e.gender FROM employee e");
+    assertThat(sqlCaptor.getValue()).isEqualTo("SELECT e.name, e.middle_name, e.birth_date, e.salary, e.age, e.overtime, e.gender FROM employee e");
 
     verifyNoMoreInteractions(preparedStatement);
 
-    assertThat(statement.toString()).isEqualTo("SELECT e.name, e.middle_name, e.birth_date, e.salary, e.overtime, e.gender FROM employee e");
+    assertThat(statement.toString()).isEqualTo("SELECT e.name, e.middle_name, e.birth_date, e.salary, e.age, e.overtime, e.gender FROM employee e");
   }
 
   @SuppressWarnings("resource")
@@ -114,7 +115,7 @@ public class SafeSQLTest {
     List<Employee> employees = new ArrayList<>();
 
     for(int i = 0; i < 10; i++) {
-      employees.add(new Employee("John" + i, null, LocalDate.of(1234, 5, 6 + i), 42.42, true, Gender.M));
+      employees.add(new Employee("John" + i, null, LocalDate.of(1234, 5, 6 + i), 42.42, 31, true, Gender.M));
     }
 
     StringTemplate template = RAW."""
@@ -128,7 +129,7 @@ public class SafeSQLTest {
     SQLStatement statement = sql.toSQLStatement(connection);
 
     assertThat(sqlCaptor.getValue()).isEqualTo("""
-      INSERT INTO employees (name, middle_name, birth_date, salary, overtime, gender) VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO employees (name, middle_name, birth_date, salary, age, overtime, gender) VALUES (?, ?, ?, ?, ?, ?, ?)
     """);
 
     SQLResult result = statement.execute();
@@ -155,7 +156,7 @@ public class SafeSQLTest {
     Reflector<Employee> all = Reflector.of(LOOKUP, Employee.class);
     List<Employee> employees = new ArrayList<>();
 
-    employees.add(new Employee("John", null, LocalDate.of(1234, 5, 6), 42.42, true, Gender.M));
+    employees.add(new Employee("John", null, LocalDate.of(1234, 5, 6), 42.42, 31, true, Gender.M));
 
     StringTemplate template = RAW."""
       INSERT INTO employees (\{all}) VALUES (\{all.batch(employees)})
@@ -168,7 +169,7 @@ public class SafeSQLTest {
     SQLStatement statement = sql.toSQLStatement(connection);
 
     assertThat(sqlCaptor.getValue()).isEqualTo("""
-      INSERT INTO employees (name, middle_name, birth_date, salary, overtime, gender) VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO employees (name, middle_name, birth_date, salary, age, overtime, gender) VALUES (?, ?, ?, ?, ?, ?, ?)
     """);
 
     SQLResult result = statement.execute();
@@ -196,12 +197,12 @@ public class SafeSQLTest {
     List<Employee> rightEmployees = new ArrayList<>();
 
     for(int i = 0; i < 5; i++) {
-      leftEmployees.add(new Employee("John" + i, null, LocalDate.of(1234, 5, 6 + i), 42.42, true, Gender.M));
-      rightEmployees.add(new Employee("John" + i, null, LocalDate.of(1234, 5, 6 + i), 42.42, true, Gender.M));
+      leftEmployees.add(new Employee("John" + i, null, LocalDate.of(1234, 5, 6 + i), 42.42, 31, true, Gender.M));
+      rightEmployees.add(new Employee("John" + i, null, LocalDate.of(1234, 5, 6 + i), 42.42, 31, true, Gender.M));
     }
 
     for(int i = 5; i < 10; i++) {
-      leftEmployees.add(new Employee("John" + i, null, LocalDate.of(1234, 5, 6 + i), 42.42, true, Gender.M));
+      leftEmployees.add(new Employee("John" + i, null, LocalDate.of(1234, 5, 6 + i), 42.42, 31, true, Gender.M));
     }
 
     StringTemplate template = RAW."""
@@ -310,24 +311,24 @@ public class SafeSQLTest {
 
     SafeSQL sql = new SafeSQL(template, TYPE_CONVERTERS);
 
-    assertThat(sql.getSQL()).isEqualTo("SELECT name, middle_name, birth_date, salary, overtime, gender FROM employees");
-    assertThat(sql.toString()).isEqualTo("SELECT name, middle_name, birth_date, salary, overtime, gender FROM employees");
+    assertThat(sql.getSQL()).isEqualTo("SELECT name, middle_name, birth_date, salary, age, overtime, gender FROM employees");
+    assertThat(sql.toString()).isEqualTo("SELECT name, middle_name, birth_date, salary, age, overtime, gender FROM employees");
 
     when(connection.prepareStatement(sqlCaptor.capture(), eq(Statement.RETURN_GENERATED_KEYS))).thenReturn(preparedStatement);
 
     SQLStatement statement = sql.toSQLStatement(connection);
 
-    assertThat(sqlCaptor.getValue()).isEqualTo("SELECT name, middle_name, birth_date, salary, overtime, gender FROM employees");
+    assertThat(sqlCaptor.getValue()).isEqualTo("SELECT name, middle_name, birth_date, salary, age, overtime, gender FROM employees");
 
     SQLResult result = statement.execute();
 
     when(preparedStatement.getResultSet()).thenReturn(new MockResultSet(List.of(
-      Arrays.asList("John", null, LocalDate.of(1234, 5, 6), 42.42, true, Gender.M)
+      Arrays.asList("John", null, LocalDate.of(1234, 5, 6), 42.42, null, true, Gender.M)
     )));
 
     Iterator<Row> iterator = result.createIterator();
 
-    assertThat(iterator.next()).extracting(Row::toArray).isEqualTo(new Object[] {"John", null, LocalDate.of(1234, 5, 6), 42.42, true, Gender.M});
+    assertThat(iterator.next()).extracting(Row::toArray).isEqualTo(new Object[] {"John", null, LocalDate.of(1234, 5, 6), 42.42, null, true, Gender.M});
     assertThat(iterator.hasNext()).isFalse();
   }
 
@@ -355,5 +356,5 @@ public class SafeSQLTest {
   }
 
   enum Gender {M, F}
-  record Employee(String name, String middleName, LocalDate birthDate, double salary, boolean overtime, Gender gender) {}
+  record Employee(String name, String middleName, LocalDate birthDate, double salary, Integer age, boolean overtime, Gender gender) {}
 }
