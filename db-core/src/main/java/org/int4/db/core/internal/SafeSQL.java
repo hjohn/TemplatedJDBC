@@ -310,9 +310,7 @@ public class SafeSQL {
               }
             }
           }
-          default -> {
-            ps.setObject(index++, value);
-          }
+          default -> ps.setObject(index++, value);
         }
       }
     }
